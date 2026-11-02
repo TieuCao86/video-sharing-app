@@ -8,8 +8,8 @@ dist/
 web-build/
 
 # Environment variables
-.env
-.env.*
+# .env
+# .env.*
 !.env.example
 
 # Logs
