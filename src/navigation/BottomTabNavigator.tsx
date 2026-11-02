@@ -3,15 +3,12 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Text, SafeAreaView } from 'react-native';
 
-// Import màn hình trang chủ thực tế của bạn
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
-// Lưu ý: Sau này khi đã có màn hình thông báo thật, hãy import vào đây
-// import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-// Màn hình tạm cho các tab chưa code chi tiết
 const DummyScreen = ({ name }: { name: string }) => (
   <SafeAreaView style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
     <Text style={{ color: '#fff', fontSize: 18 }}>{name} Screen</Text>
@@ -24,8 +21,8 @@ export const BottomTabNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
-        tabBarActiveTintColor: '#FF2442', // Màu hồng chủ đạo khi được chọn
-        tabBarInactiveTintColor: '#888888', // Màu xám khi không chọn
+        tabBarActiveTintColor: '#FF2442',
+        tabBarInactiveTintColor: '#888888',
         tabBarLabelStyle: styles.tabBarLabel,
       }}
     >
@@ -73,10 +70,10 @@ export const BottomTabNavigator = () => {
         })}
       />
 
-      {/* 4. THÔNG BÁO (Notifications - Thay thế cho tab Friends) */}
+      {/* 4. THÔNG BÁO (Notifications) */}
       <Tab.Screen
         name="NotificationsTab"
-        component={() => <DummyScreen name="Notifications" />} // Sau này thay bằng component NotificationsScreen thực tế của bạn
+        component={() => <DummyScreen name="Notifications" />}
         options={{
           tabBarLabel: 'Notification',
           tabBarIcon: ({ color, size }) => (
@@ -88,7 +85,7 @@ export const BottomTabNavigator = () => {
       {/* 5. Trang cá nhân (My Profile) */}
       <Tab.Screen
         name="ProfileTab"
-        component={() => <DummyScreen name="My Profile" />}
+        component={ProfileScreen}
         options={{
           tabBarLabel: 'My profile',
           tabBarIcon: ({ color, size }) => (

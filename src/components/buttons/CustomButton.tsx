@@ -1,13 +1,23 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+  StyleProp,
+} from 'react-native';
+import { colors } from '../../constants/colors';
 
 interface CustomButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'outline' | 'danger';
+  variant?: 'primary' | 'outline' | 'danger' | 'muted-outline';
   isLoading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
+  style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  disabled?: boolean;
 }
 
 export const CustomButton: React.FC<CustomButtonProps> = ({
@@ -17,41 +27,65 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   isLoading = false,
   style,
   textStyle,
+  disabled = false,
 }) => {
   const getBackgroundColor = () => {
     switch (variant) {
       case 'outline':
+      case 'muted-outline':
         return 'transparent';
       case 'danger':
         return '#FF3B30';
       default:
-        return '#FF2442'; // Màu hồng đặc trưng của ứng dụng video
+        return colors.primary;
     }
   };
 
   const getTextColor = () => {
-    return variant === 'outline' ? '#FF2442' : '#FFFFFF';
+    switch (variant) {
+      case 'outline':
+        return colors.primary;
+      case 'muted-outline':
+        return colors.textSecondary;
+      default:
+        return colors.white;
+    }
   };
+
+  const getBorderColor = () => {
+    switch (variant) {
+      case 'outline':
+        return colors.primary;
+      case 'muted-outline':
+        return colors.borderDark;
+      default:
+        return 'transparent';
+    }
+  };
+
+  const hasBorder = variant === 'outline' || variant === 'muted-outline';
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       style={[
         styles.button,
         {
           backgroundColor: getBackgroundColor(),
-          borderWidth: variant === 'outline' ? 1 : 0,
-          borderColor: '#FF2442',
+          borderWidth: hasBorder ? 1 : 0,
+          borderColor: getBorderColor(),
         },
         style,
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={getTextColor()} />
+        <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
-        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>{title}</Text>
+        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>
+          {title}
+        </Text>
       )}
     </TouchableOpacity>
   );

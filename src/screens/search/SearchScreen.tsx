@@ -147,7 +147,7 @@ export const SearchScreen: React.FC = () => {
 
         {/* 4. Phần "Maybe you're interested" */}
         <View style={styles.interestedSection}>
-          <Text style={styles.interestedTitle}>Maybe you're interested</Text>
+          <Text style={styles.interestedTitle}>{"Maybe you're interested"}</Text>
           <View style={styles.tagsGrid}>
             {mockTags.map((tag, index) => (
               <TouchableOpacity key={index} style={styles.tagPill}>

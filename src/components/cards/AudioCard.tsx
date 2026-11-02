@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 
 interface AudioCardProps {
   item: { id: string; title: string; subtitle: string; thumbnail: string };
