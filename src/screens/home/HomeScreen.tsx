@@ -34,12 +34,6 @@ const mockTopics: BrowseTopic[] = [
   { id: 't8', name: '+20 Topics', icon: 'add-circle-outline' },
 ];
 
-const mockStreaming: TopTrendingItem[] = [
-  { id: 's1', title: 'Lifestyle', views: '1.5M views', thumbnail: 'https://example.com/stream1.jpg', timeAgo: '1 min ago', creator: { id: 'u4', name: 'Jane', avatar: '' } },
-  { id: 's2', title: 'Cooking', views: '1.3M views', thumbnail: 'https://example.com/stream2.jpg', timeAgo: '45 min ago', creator: { id: 'u5', name: 'Lauren', avatar: '' } },
-  { id: 's3', title: 'Dancing', views: '2M views', thumbnail: 'https://example.com/stream3.jpg', timeAgo: '45 min', creator: { id: 'u6', name: 'Alice', avatar: '' } },
-];
-
 const mockAudio = [
   { id: 'a1', title: 'Perfect lady', subtitle: 'Bookcase', thumbnail: 'https://example.com/audio1.jpg' },
   { id: 'a2', title: 'Experience', subtitle: 'Lifestyle', thumbnail: 'https://example.com/audio2.jpg' },
@@ -55,9 +49,6 @@ export const HomeScreen: React.FC = () => {
           <Ionicons name="play-circle" size={26} color="#FF2442" />
           <Text style={styles.headerText}>Video Sharing App</Text>
         </View>
-        <TouchableOpacity>
-          <Ionicons name="notifications-outline" size={24} color="#000000" />
-        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -81,21 +72,7 @@ export const HomeScreen: React.FC = () => {
         {/* 3. Browse Topics (Đầy đủ 8 mục) */}
         <BrowseTopics topics={mockTopics} onTopicPress={(t) => console.log(t.name)} />
 
-        {/* 4. Streaming */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Streaming</Text>
-          <TouchableOpacity><Text style={styles.viewMore}>View more</Text></TouchableOpacity>
-        </View>
-        <FlatList
-          horizontal
-          data={mockStreaming}
-          keyExtractor={(item) => item.id}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => <VideoCard item={item} onPress={() => {}} type="trending" />}
-        />
-
-        {/* 5. Audio */}
+        {/* 4. Audio */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Audio</Text>
           <TouchableOpacity><Text style={styles.viewMore}>View more</Text></TouchableOpacity>
