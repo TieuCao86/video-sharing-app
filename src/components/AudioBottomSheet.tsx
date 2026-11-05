@@ -102,7 +102,7 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
   onClose,
   onSelectAudio,
   selectedAudio,
-}) => {
+}: AudioBottomSheetProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentSource, setCurrentSource] = useState<string | null>(null);

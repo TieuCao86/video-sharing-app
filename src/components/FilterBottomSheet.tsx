@@ -139,7 +139,7 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
   onClose,
   onSelectFilter,
   selectedFilter,
-}) => {
+}: FilterBottomSheetProps) => {
   console.log('FilterBottomSheet visible:', visible);
   console.log('FILTERS count:', FILTERS.length);
   

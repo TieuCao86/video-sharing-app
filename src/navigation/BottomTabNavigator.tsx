@@ -16,6 +16,8 @@ const DummyScreen = ({ name }: { name: string }) => (
   </SafeAreaView>
 );
 
+const CreateVideoScreen = () => <DummyScreen name="Create Video" />;
+
 export const BottomTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -54,7 +56,7 @@ export const BottomTabNavigator = () => {
       {/* 3. Nút đăng bài / quay video ở giữa (+) */}
       <Tab.Screen
         name="CreateTab"
-        component={() => <DummyScreen name="Create Video" />}
+        component={CreateVideoScreen}
         options={{
           tabBarLabel: () => null,
           tabBarIcon: () => (
