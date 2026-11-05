@@ -14,6 +14,7 @@ interface CustomButtonProps {
   title: string;
   onPress: () => void;
   variant?: 'primary' | 'outline' | 'danger' | 'muted-outline';
+  size?: 'default' | 'large'; // Thêm size để linh hoạt giữa các màn hình (large cho Auth, default cho app chung)
   isLoading?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -24,6 +25,7 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   title,
   onPress,
   variant = 'primary',
+  size = 'default',
   isLoading = false,
   style,
   textStyle,
@@ -37,27 +39,27 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       case 'danger':
         return '#FF3B30';
       default:
-        return colors.primary;
+        return '#FF2D55'; // Đồng bộ màu hồng/đỏ chủ đạo (#FF2D55)
     }
   };
 
   const getTextColor = () => {
     switch (variant) {
       case 'outline':
-        return colors.primary;
+        return '#FF2D55';
       case 'muted-outline':
-        return colors.textSecondary;
+        return '#8E8E93';
       default:
-        return colors.white;
+        return '#FFFFFF';
     }
   };
 
   const getBorderColor = () => {
     switch (variant) {
       case 'outline':
-        return colors.primary;
+        return '#FF2D55';
       case 'muted-outline':
-        return colors.borderDark;
+        return '#E0E0E0';
       default:
         return 'transparent';
     }
@@ -72,18 +74,27 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       disabled={isLoading || disabled}
       style={[
         styles.button,
+        size === 'large' ? styles.largeButton : styles.defaultButton,
         {
           backgroundColor: getBackgroundColor(),
           borderWidth: hasBorder ? 1 : 0,
           borderColor: getBorderColor(),
         },
+        disabled && styles.disabledButton,
         style,
       ]}
     >
       {isLoading ? (
         <ActivityIndicator color={getTextColor()} size="small" />
       ) : (
-        <Text style={[styles.text, { color: getTextColor() }, textStyle]}>
+        <Text
+          style={[
+            styles.text,
+            size === 'large' ? styles.largeText : styles.defaultText,
+            { color: getTextColor() },
+            textStyle,
+          ]}
+        >
           {title}
         </Text>
       )}
@@ -93,15 +104,37 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    height: 44,
-    paddingHorizontal: 20,
-    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
   },
+  defaultButton: {
+    height: 44,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+  },
+  largeButton: {
+    height: 52,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowColor: '#FF2D55',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   text: {
-    fontSize: 14,
     fontWeight: '600',
+  },
+  defaultText: {
+    fontSize: 14,
+  },
+  largeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
