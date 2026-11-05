@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { StoryList } from '../../components/cards/StoryList';
 import { BrowseTopics } from '../../components/cards/BrowseTopics';
 import { VideoCard } from '../../components/cards/VideoCard';
-import { AudioCard } from '../../components/cards/AudioCard';
+import { AudioCard } from '../../components/AudioCard';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Story, TopTrendingItem, BrowseTopic } from '../../types/video.type';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 // Dữ liệu mẫu chuẩn khớp với thiết kế giao diện
 const mockStories: Story[] = [
@@ -19,9 +20,92 @@ const mockStories: Story[] = [
 ];
 
 const mockTrending: TopTrendingItem[] = [
-  { id: 'v1', title: 'Lovely', views: '1.5M views', thumbnail: 'https://example.com/thumb1.jpg', timeAgo: '1 min ago', creator: { id: 'u1', name: 'Laura', avatar: '' } },
-  { id: 'v2', title: 'Sweet', views: '1.2M views', thumbnail: 'https://example.com/thumb2.jpg', timeAgo: '45 min ago', creator: { id: 'u2', name: 'Lauren', avatar: '' } },
-  { id: 'v3', title: 'Explore', views: '1.8M views', thumbnail: 'https://example.com/thumb3.jpg', timeAgo: '45 min', creator: { id: 'u3', name: 'Kiran', avatar: '' } },
+  { 
+    id: '1', 
+    title: 'Amazing sunset timelapse', 
+    views: '1.5M views', 
+    thumbnail: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500', 
+    timeAgo: '1 min ago', 
+    creator: { id: 'u1', name: 'Laura', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100' } 
+  },
+  { 
+    id: '2', 
+    title: 'Travel vlog - Paris adventure', 
+    views: '982K views', 
+    thumbnail: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=500', 
+    timeAgo: '15 min ago', 
+    creator: { id: 'u2', name: 'William', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' } 
+  },
+  { 
+    id: '3', 
+    title: 'Cute cat playing with toy', 
+    views: '2.1M views', 
+    thumbnail: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=500', 
+    timeAgo: '1 hour ago', 
+    creator: { id: 'u3', name: 'Julia', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100' } 
+  },
+  { 
+    id: '4', 
+    title: 'How to cook perfect pasta', 
+    views: '756K views', 
+    thumbnail: 'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=500', 
+    timeAgo: '2 hours ago', 
+    creator: { id: 'u4', name: 'Peter', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100' } 
+  },
+  { 
+    id: '5', 
+    title: 'Epic mountain climbing', 
+    views: '1.8M views', 
+    thumbnail: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=500', 
+    timeAgo: '3 hours ago', 
+    creator: { id: 'u5', name: 'Adam', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' } 
+  },
+  { 
+    id: '6', 
+    title: 'Dance performance highlights', 
+    views: '1.2M views', 
+    thumbnail: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500', 
+    timeAgo: '5 hours ago', 
+    creator: { id: 'u6', name: 'Liz', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' } 
+  },
+];
+
+const mockAudios = [
+  {
+    id: 'a1',
+    title: 'Quá đủ rồi',
+    artist: 'CoolKid',
+    thumbnail: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/ArtistImage/quaduroi.jfif',
+    audioUrl: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Music/QUA%20DU%20ROI%20-%20COOLKID.mp3',
+  },
+  {
+    id: 'a2',
+    title: 'Người Im Lặng Gặp Người Hay Nói',
+    artist: 'HIEUTHUHAI',
+    thumbnail: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/ArtistImage/c0742c35795d4d234bf86cc7258b5077.jpg',
+    audioUrl: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Music/nguoiimlanggapnguoihaynoi.mp3',
+  },
+  {
+    id: 'a3',
+    title: 'Sunny',
+    artist: 'Summer Vibes',
+    thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+  },
+  {
+    id: 'a4',
+    title: 'Flowers',
+    artist: 'Nature Sounds',
+    thumbnail: 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=200',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+  },
+  {
+    id: 'a5',
+    title: 'Morning coffee',
+    artist: 'Chill Beats',
+    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+  },
 ];
 
 const mockTopics: BrowseTopic[] = [
@@ -57,6 +141,28 @@ const mockAudio = [
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   
+  // Audio player state
+  const [currentAudioId, setCurrentAudioId] = useState<string | null>(null);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
+  
+  const player = useAudioPlayer(currentAudioUrl || undefined);
+  const status = useAudioPlayerStatus(player);
+  
+  const handleAudioPress = (audio: typeof mockAudios[0]) => {
+    if (currentAudioId === audio.id && status.playing) {
+      // Pause current audio
+      player.pause();
+      setCurrentAudioId(null);
+    } else if (currentAudioId === audio.id && !status.playing) {
+      // Resume
+      player.play();
+    } else {
+      // Play new audio
+      setCurrentAudioId(audio.id);
+      setCurrentAudioUrl(audio.audioUrl);
+    }
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -87,7 +193,7 @@ export const HomeScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => <VideoCard item={item} onPress={() => {}} type="trending" />}
+          renderItem={({ item }) => <VideoCard item={item} onPress={() => navigation.navigate('ReelDetail', { videoId: item.id })} type="trending" />}
         />
 
         {/* 3. Browse Topics (Đầy đủ 8 mục) */}
@@ -103,20 +209,26 @@ export const HomeScreen: React.FC = () => {
         {/* 4. Audio */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Audio</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('VideoList', { 
-            title: 'Audio', 
-            type: 'trending' 
-          })}>
+          <TouchableOpacity onPress={() => navigation.navigate('AudioList')}>
             <Text style={styles.viewMore}>View more</Text>
           </TouchableOpacity>
         </View>
         <FlatList
           horizontal
-          data={mockAudio}
+          data={mockAudios.slice(0, 3)}
           keyExtractor={(item) => item.id}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => <AudioCard item={item} onPress={() => {}} />}
+          renderItem={({ item }) => (
+            <AudioCard
+              id={item.id}
+              title={item.title}
+              artist={item.artist}
+              thumbnail={item.thumbnail}
+              isPlaying={currentAudioId === item.id && status.playing}
+              onPress={() => handleAudioPress(item)}
+            />
+          )}
         />
 
         <View style={{ height: 40 }} />
@@ -166,5 +278,8 @@ const styles = StyleSheet.create({
     color: '#FF2442',
     fontSize: 14,
     fontWeight: '500',
+  },
+  audioList: {
+    backgroundColor: '#FFFFFF',
   },
 });

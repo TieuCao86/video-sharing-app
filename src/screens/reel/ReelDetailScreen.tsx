@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -14,29 +14,84 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { VideoItem } from "../../components/VideoItem";
 
 const { width, height } = Dimensions.get("window");
 
-// Dữ liệu mẫu bình luận bám sát thiết kế hình 2
+// Mock video data - Using reliable public video URLs
+interface VideoData {
+  id: string;
+  url: string;
+  creator: string;
+  caption: string;
+  audio: string;
+}
+
+const MOCK_VIDEOS_ARRAY: VideoData[] = [
+  {
+    id: '1',
+    url: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Video/360429_small.mp4',
+    creator: 'Laura',
+    caption: 'Amazing sunset timelapse #nature #sunset',
+    audio: 'Summer Vibes - DJ Mix'
+  },
+  {
+    id: '2',
+    url: 'https://www.w3schools.com/html/mov_bbb.mp4',
+    creator: 'William',
+    caption: 'Travel vlog - Paris adventure #travel #paris',
+    audio: 'La Vie En Rose - Edith Piaf'
+  },
+  {
+    id: '3',
+    url: 'https://download.samplelib.com/mp4/sample-5s.mp4',
+    creator: 'Julia',
+    caption: 'She waits for me #lovepet #cat',
+    audio: 'Baby shark - Kingfong'
+  },
+  {
+    id: '4',
+    url: 'https://download.samplelib.com/mp4/sample-10s.mp4',
+    creator: 'Peter',
+    caption: 'How to cook perfect pasta #cooking #food',
+    audio: 'Italian Music - Bella Notte'
+  },
+  {
+    id: '5',
+    url: 'https://download.samplelib.com/mp4/sample-15s.mp4',
+    creator: 'Adam',
+    caption: 'Epic mountain climbing #adventure #mountain',
+    audio: 'Epic Journey - Hans Zimmer'
+  },
+  {
+    id: '6',
+    url: 'https://download.samplelib.com/mp4/sample-20s.mp4',
+    creator: 'Liz',
+    caption: 'Dance performance highlights #dance #performance',
+    audio: 'Pop Hit - Dance Mix'
+  },
+];
+
+// Dữ liệu mẫu bình luận
 const mockComments = [
   {
     id: "1",
-    user: { name: "Laura", avatar: "https://example.com/avatar1.jpg" },
+    user: { name: "Laura", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" },
     content: "So cute, I wish my cat was like that",
     timeAgo: "6 mins ago",
     isLiked: false,
   },
   {
     id: "2",
-    user: { name: "Lauren", avatar: "https://example.com/avatar2.jpg" },
+    user: { name: "Lauren", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100" },
     content: 'Look at her, as if "mom, i want food"',
     timeAgo: "20 mins ago",
     isLiked: false,
   },
   {
     id: "3",
-    user: { name: "Liz", avatar: "https://example.com/avatar3.jpg" },
+    user: { name: "Liz", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
     content:
       "My cats also often wait for me to come home from work in front of the door hehe",
     timeAgo: "24 mins ago",
@@ -44,32 +99,71 @@ const mockComments = [
   },
   {
     id: "4",
-    user: { name: "Anne", avatar: "https://example.com/avatar4.jpg" },
+    user: { name: "Anne", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
     content: "Awwwwww",
     timeAgo: "30 mins ago",
     isLiked: false,
   },
   {
     id: "5",
-    user: { name: "Larry", avatar: "https://example.com/avatar5.jpg" },
+    user: { name: "Larry", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100" },
     content: "I want to cuddle",
     timeAgo: "20 mins ago",
     isLiked: false,
   },
 ];
 
+type RouteParams = {
+  ReelDetail: {
+    videoId: string;
+  };
+};
+
 export const ReelDetailScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
+  const flatListRef = useRef<FlatList>(null);
   
+  const videoId = route.params?.videoId || '3';
+  
+  // Find initial index based on videoId
+  const initialIndex = MOCK_VIDEOS_ARRAY.findIndex(v => v.id === videoId);
+  const startIndex = initialIndex !== -1 ? initialIndex : 0;
+  
+  const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState(mockComments);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likes, setLikes] = useState(19600);
+
+  // Scroll to initial video on mount
+  useEffect(() => {
+    if (flatListRef.current && startIndex > 0) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: startIndex,
+          animated: false,
+        });
+      }, 100);
+    }
+  }, []);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      setCurrentIndex(viewableItems[0].index || 0);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
     const newComment = {
       id: Date.now().toString(),
-      user: { name: "You", avatar: "https://example.com/my-avatar.jpg" },
+      user: { name: "You", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" },
       content: commentText,
       timeAgo: "Just now",
       isLiked: false,
@@ -78,79 +172,56 @@ export const ReelDetailScreen: React.FC = () => {
     setCommentText("");
   };
 
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    setLikes(prev => isLiked ? prev - 1 : prev + 1);
+  };
+
+  const renderVideoItem = ({ item, index }: { item: VideoData; index: number }) => (
+    <VideoItem
+      video={item}
+      isActive={index === currentIndex}
+      onCommentPress={() => setIsCommentVisible(true)}
+      likes={likes}
+      isLiked={isLiked}
+      onLikePress={handleLike}
+      commentsCount={comments.length}
+    />
+  );
+
   return (
     <View style={styles.container}>
-      {/* 1. Nền video / Hình ảnh mô phỏng */}
-      <Image
-        source={{ uri: "https://example.com/cat-video-cover.jpg" }}
-        style={styles.backgroundImage}
+      {/* Video FlatList - Vertical Paging */}
+      <FlatList
+        ref={flatListRef}
+        data={MOCK_VIDEOS_ARRAY}
+        renderItem={renderVideoItem}
+        keyExtractor={(item) => item.id}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        snapToInterval={height}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        getItemLayout={(data, index) => ({
+          length: height,
+          offset: height * index,
+          index,
+        })}
       />
 
-      {/* Lớp phủ màu tối nhẹ phía dưới để làm nổi bật chữ */}
-      <View style={styles.overlay} />
-
-      <SafeAreaView style={styles.safeArea}>
-        {/* Nút đóng (X) ở góc trên bên phải */}
+      {/* Close Button Overlay */}
+      <SafeAreaView style={styles.closeButtonContainer}>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-
-        {/* Cụm tương tác bên phải (Avatar, Like, Comment, More) */}
-        <View style={styles.rightActionsContainer}>
-          <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: "https://example.com/avatar1.jpg" }}
-              style={styles.creatorAvatar}
-            />
-            <View style={styles.plusBadge}>
-              <Ionicons name="add" size={10} color="#FFFFFF" />
-            </View>
-          </View>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="heart" size={28} color="#FF2442" />
-            <Text style={styles.actionText}>19.6k</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setIsCommentVisible(true)} // Mở Modal Comments
-          >
-            <Ionicons name="chatbubble-outline" size={26} color="#FFFFFF" />
-            <Text style={styles.actionText}>700</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Thông tin tác giả & Tiêu đề video ở góc dưới bên trái */}
-        <View style={styles.bottomInfoContainer}>
-          <Text style={styles.creatorName}>Laura</Text>
-          <Text style={styles.caption}>
-            She waits for me <Text style={styles.hashtag}>#lovepet #cat</Text>
-          </Text>
-
-          <View style={styles.audioRow}>
-            <Ionicons name="musical-note" size={14} color="#FFFFFF" />
-            <Text style={styles.audioText} numberOfLines={1}>
-              {" "}
-              Baby shark - Kingfong
-            </Text>
-          </View>
-        </View>
-
-        {/* Thanh tiến trình video phía dưới cùng */}
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressFilled} />
-        </View>
       </SafeAreaView>
 
-      {/* 2. MODAL COMMENTS (Hiển thị khi bấm vào nút bình luận - Hình 2) */}
+      {/* MODAL COMMENTS */}
       <Modal
         visible={isCommentVisible}
         animationType="slide"
@@ -170,7 +241,7 @@ export const ReelDetailScreen: React.FC = () => {
           <View style={styles.commentSheetContainer}>
             {/* Header của Modal */}
             <View style={styles.commentHeader}>
-              <Text style={styles.commentTitle}>700 comments</Text>
+              <Text style={styles.commentTitle}>{comments.length} comments</Text>
               <TouchableOpacity onPress={() => setIsCommentVisible(false)}>
                 <Ionicons name="close" size={22} color="#000000" />
               </TouchableOpacity>
@@ -203,7 +274,7 @@ export const ReelDetailScreen: React.FC = () => {
               )}
             />
 
-            {/* Ô nhập bình luận ở đáy modal */}
+            {/* Ô nhập bình luận */}
             <View style={styles.commentInputContainer}>
               <TextInput
                 style={styles.commentInput}
@@ -231,101 +302,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
-  backgroundImage: {
-    ...StyleSheet.absoluteFill,
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.2)",
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "space-between",
+  closeButtonContainer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 100,
   },
   closeButton: {
-    alignSelf: "flex-end",
     padding: 16,
   },
-  rightActionsContainer: {
-    position: "absolute",
-    right: 12,
-    bottom: 100,
-    alignItems: "center",
-  },
-  avatarWrapper: {
-    marginBottom: 20,
-    position: "relative",
-  },
-  creatorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    borderColor: "#FFFFFF",
-  },
-  plusBadge: {
-    position: "absolute",
-    bottom: -4,
-    alignSelf: "center",
-    backgroundColor: "#FF2442",
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  actionButton: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  actionText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  bottomInfoContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    width: "80%",
-  },
-  creatorName: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 6,
-  },
-  caption: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  hashtag: {
-    fontWeight: "600",
-  },
-  audioRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  audioText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-  },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    width: "100%",
-  },
-  progressFilled: {
-    width: "60%",
-    height: "100%",
-    backgroundColor: "#FF2442",
-  },
-  // Styles cho Modal Comments (Hình 2)
+  // Styles cho Modal Comments
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",

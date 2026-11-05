@@ -29,7 +29,7 @@ export const TimerBottomSheet: React.FC<TimerBottomSheetProps> = ({
   onClose,
   onSelectTimer,
   selectedTimer,
-}) => {
+}: TimerBottomSheetProps) => {
   const handleSelectTimer = (timer: TimerOption) => {
     onSelectTimer(timer);
     onClose();

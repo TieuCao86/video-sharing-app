@@ -136,7 +136,7 @@ export const SearchScreen: React.FC = () => {
                   }
                 ]} 
                 activeOpacity={0.85}
-                onPress={() => navigation.navigate('ReelDetail')}
+                onPress={() => navigation.navigate('ReelDetail', { videoId: item.id })}
               >
                 <View style={styles.thumbnailContainer}>
                   <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
