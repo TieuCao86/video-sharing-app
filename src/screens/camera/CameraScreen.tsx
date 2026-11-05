@@ -16,6 +16,7 @@ import { RecordingTimer } from '../../components/RecordingTimer';
 import { FilterBottomSheet, Filter } from '../../components/FilterBottomSheet';
 import { FilterOverlay } from '../../components/FilterOverlay';
 import { TimerBottomSheet, TimerOption } from '../../components/TimerBottomSheet';
+import { AudioBottomSheet, AudioTrack } from '../../components/AudioBottomSheet';
 
 export default function CameraScreen() {
   const navigation = useNavigation();
@@ -31,6 +32,8 @@ export default function CameraScreen() {
   const [showTimerSheet, setShowTimerSheet] = useState(false);
   const [selectedTimer, setSelectedTimer] = useState<TimerOption>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showAudioSheet, setShowAudioSheet] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState<AudioTrack | null>(null);
 
   useEffect(() => {
     // Request permissions on mount
@@ -139,8 +142,7 @@ export default function CameraScreen() {
 
   const handleAddAudio = () => {
     // Navigate to Add Audio screen
-    Alert.alert('Add Audio', 'Navigate to audio selection screen');
-    // navigation.navigate('AddAudio');
+    setShowAudioSheet(true);
   };
 
   const handleFilter = () => {
@@ -194,10 +196,22 @@ export default function CameraScreen() {
 
         {/* Add Audio Button - hide when recording */}
         {!isRecording && (
-          <TouchableOpacity style={styles.addAudioButton} onPress={handleAddAudio}>
-            <Ionicons name="musical-notes" size={18} color="black" />
-            <Text style={styles.addAudioText}>Add audio</Text>
-          </TouchableOpacity>
+          <View style={styles.addAudioContainer}>
+            <TouchableOpacity style={styles.addAudioButton} onPress={handleAddAudio}>
+              <Ionicons name="musical-notes" size={18} color="black" />
+              <Text style={styles.addAudioText} numberOfLines={1}>
+                {selectedAudio ? selectedAudio.title : 'Add audio'}
+              </Text>
+            </TouchableOpacity>
+            {selectedAudio && (
+              <TouchableOpacity 
+                style={styles.removeAudioButton}
+                onPress={() => setSelectedAudio(null)}
+              >
+                <Ionicons name="close-circle" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
 
@@ -290,6 +304,14 @@ export default function CameraScreen() {
         onSelectTimer={setSelectedTimer}
         selectedTimer={selectedTimer}
       />
+
+      {/* Audio Bottom Sheet */}
+      <AudioBottomSheet
+        visible={showAudioSheet}
+        onClose={() => setShowAudioSheet(false)}
+        onSelectAudio={setSelectedAudio}
+        selectedAudio={selectedAudio}
+      />
     </View>
   );
 }
@@ -342,6 +364,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 20,
   },
+  addAudioContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   addAudioButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -350,11 +377,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     gap: 6,
+    maxWidth: 180,
   },
   addAudioText: {
     color: '#000',
     fontSize: 14,
     fontWeight: '500',
+    flex: 1,
+  },
+  removeAudioButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
   },
 
   // Right Menu
