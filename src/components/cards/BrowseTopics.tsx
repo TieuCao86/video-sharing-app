@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BrowseTopic } from '../../types/video.type';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,11 +9,20 @@ interface BrowseTopicsProps {
 }
 
 export const BrowseTopics: React.FC<BrowseTopicsProps> = ({ topics, onTopicPress }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Filter out the "+20 Topics" button from regular topics
+  const regularTopics = topics.filter(t => !t.name.includes('Topics'));
+  const expandButton = topics.find(t => t.name.includes('Topics'));
+  
+  // Show only first 7 topics when collapsed
+  const displayedTopics = isExpanded ? regularTopics : regularTopics.slice(0, 7);
+  
   return (
     <View style={styles.container}>
       <Text style={styles.headerTitle}>Browse topic</Text>
       <View style={styles.grid}>
-        {topics.map((topic) => (
+        {displayedTopics.map((topic) => (
           <TouchableOpacity 
             key={topic.id} 
             style={styles.topicCard} 
@@ -24,6 +33,24 @@ export const BrowseTopics: React.FC<BrowseTopicsProps> = ({ topics, onTopicPress
             <Text numberOfLines={1} style={styles.topicName}>{topic.name}</Text>
           </TouchableOpacity>
         ))}
+        
+        {/* Expand/Collapse Button */}
+        {regularTopics.length > 7 && (
+          <TouchableOpacity 
+            style={styles.topicCard} 
+            onPress={() => setIsExpanded(!isExpanded)}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={isExpanded ? 'remove-circle-outline' : 'add-circle-outline'} 
+              size={22} 
+              color="#FF2442" 
+            />
+            <Text numberOfLines={1} style={styles.topicName}>
+              {isExpanded ? 'Show less' : `+${regularTopics.length - 7} Topics`}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

@@ -6,6 +6,7 @@ import { View, StyleSheet, Text, SafeAreaView } from 'react-native';
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { NotificationScreen } from '../screens/notification';
 
 const Tab = createBottomTabNavigator();
 
@@ -65,7 +66,8 @@ export const BottomTabNavigator = () => {
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            console.log('Open Create Video Modal');
+            // Navigate to Camera screen
+            navigation.navigate('Camera');
           },
         })}
       />
@@ -73,7 +75,7 @@ export const BottomTabNavigator = () => {
       {/* 4. THÔNG BÁO (Notifications) */}
       <Tab.Screen
         name="NotificationsTab"
-        component={() => <DummyScreen name="Notifications" />}
+        component={NotificationScreen}
         options={{
           tabBarLabel: 'Notification',
           tabBarIcon: ({ color, size }) => (

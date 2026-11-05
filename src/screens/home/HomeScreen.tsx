@@ -5,6 +5,7 @@ import { BrowseTopics } from '../../components/cards/BrowseTopics';
 import { VideoCard } from '../../components/cards/VideoCard';
 import { AudioCard } from '../../components/cards/AudioCard';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Story, TopTrendingItem, BrowseTopic } from '../../types/video.type';
 
 // Dữ liệu mẫu chuẩn khớp với thiết kế giao diện
@@ -29,9 +30,22 @@ const mockTopics: BrowseTopic[] = [
   { id: 't3', name: 'News', icon: 'document-text-outline' },
   { id: 't4', name: 'Travel', icon: 'globe-outline' },
   { id: 't5', name: 'Health', icon: 'heart-outline' },
-  { id: 't6', name: 'Weather', icon: 'locate-outline' },
-  { id: 't7', name: 'Art', icon: 'image-outline' },
-  { id: 't8', name: '+20 Topics', icon: 'add-circle-outline' },
+  { id: 't6', name: 'Weather', icon: 'cloud-outline' },
+  { id: 't7', name: 'Art', icon: 'color-palette-outline' },
+  // Additional topics (hidden initially, shown when expanded)
+  { id: 't8', name: 'Music', icon: 'musical-notes-outline' },
+  { id: 't9', name: 'Food', icon: 'restaurant-outline' },
+  { id: 't10', name: 'Gaming', icon: 'game-controller-outline' },
+  { id: 't11', name: 'Tech', icon: 'laptop-outline' },
+  { id: 't12', name: 'Fashion', icon: 'shirt-outline' },
+  { id: 't13', name: 'Beauty', icon: 'rose-outline' },
+  { id: 't14', name: 'Fitness', icon: 'barbell-outline' },
+  { id: 't15', name: 'Education', icon: 'school-outline' },
+  { id: 't16', name: 'Business', icon: 'briefcase-outline' },
+  { id: 't17', name: 'Comedy', icon: 'happy-outline' },
+  { id: 't18', name: 'Pets', icon: 'paw-outline' },
+  { id: 't19', name: 'DIY', icon: 'hammer-outline' },
+  { id: 't20', name: 'Science', icon: 'flask-outline' },
 ];
 
 const mockAudio = [
@@ -41,6 +55,8 @@ const mockAudio = [
 ];
 
 export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -58,7 +74,12 @@ export const HomeScreen: React.FC = () => {
         {/* 2. Top Trending */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Top trending</Text>
-          <TouchableOpacity><Text style={styles.viewMore}>View more</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('VideoList', { 
+            title: 'Top trending', 
+            type: 'trending' 
+          })}>
+            <Text style={styles.viewMore}>View more</Text>
+          </TouchableOpacity>
         </View>
         <FlatList
           horizontal
@@ -70,12 +91,24 @@ export const HomeScreen: React.FC = () => {
         />
 
         {/* 3. Browse Topics (Đầy đủ 8 mục) */}
-        <BrowseTopics topics={mockTopics} onTopicPress={(t) => console.log(t.name)} />
+        <BrowseTopics topics={mockTopics} onTopicPress={(topic) => {
+          // Navigate to specific topic
+          navigation.navigate('VideoList', { 
+            title: topic.name, 
+            type: 'topic',
+            topicId: topic.id
+          });
+        }} />
 
         {/* 4. Audio */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Audio</Text>
-          <TouchableOpacity><Text style={styles.viewMore}>View more</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('VideoList', { 
+            title: 'Audio', 
+            type: 'trending' 
+          })}>
+            <Text style={styles.viewMore}>View more</Text>
+          </TouchableOpacity>
         </View>
         <FlatList
           horizontal
