@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Text } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Text,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../constants/colors';
 import { ApiUser } from '../../../types/user.type';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
@@ -30,6 +39,8 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [usersList, setUsersList] = useState<UserProfileItem[]>([]);
   const [followOverrides, setFollowOverrides] = useState<Record<string, boolean>>({});
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -47,6 +58,16 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   useEffect(() => {
     fetchList();
   }, [fetchList]);
+
+  const filteredUsers = useMemo(() => {
+    const query = normalizeSearch(searchQuery);
+    if (!query) return usersList;
+    return usersList.filter((user) => {
+      const name = normalizeSearch(user.name || '');
+      const bio = normalizeSearch(user.bio || '');
+      return name.includes(query) || bio.includes(query);
+    });
+  }, [usersList, searchQuery]);
 
   const tabs: [TabItem, TabItem] = useMemo(
     () => [
@@ -75,7 +96,38 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
         ownerName={owner.name}
         ownerAvatar={owner.avatar}
         onBack={onBack}
+        onSearch={() => {
+          setSearchQuery('');
+          setSearchOpen((open) => !open);
+        }}
       />
+
+      {searchOpen && (
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color="#999999" />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder={
+              activeTab === 'followers' ? 'Tìm người theo dõi' : 'Tìm người đang theo dõi'
+            }
+            placeholderTextColor="#999999"
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="close-circle" size={18} color="#999999" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <ProfileTabBar
         tabs={tabs}
@@ -87,17 +139,20 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : usersList.length === 0 ? (
+      ) : filteredUsers.length === 0 ? (
         <View style={styles.centerContainer}>
           <Text style={styles.emptyText}>
-            {activeTab === 'followers'
-              ? 'Chưa có người theo dõi nào.'
-              : 'Chưa theo dõi người dùng nào.'}
+            {searchQuery.trim()
+              ? 'Không tìm thấy người dùng phù hợp.'
+              : activeTab === 'followers'
+                ? 'Chưa có người theo dõi nào.'
+                : 'Chưa theo dõi người dùng nào.'}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={usersList}
+          data={filteredUsers}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
             const isFollowing = followOverrides[item.id] ?? item.isFollowing ?? false;
@@ -127,6 +182,16 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   );
 };
 
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim();
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -145,5 +210,22 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: colors.text,
+    paddingVertical: 0,
   },
 });
