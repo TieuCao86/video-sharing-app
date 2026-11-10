@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../constants/colors';
 import { useAuthStore } from '../../store/useAuthStore';
+import { logout as supabaseLogout } from '../../services/authService';
 import { CustomButton } from '../../components/buttons/CustomButton';
 
 export const SettingsScreen: React.FC = () => {
@@ -20,9 +21,9 @@ export const SettingsScreen: React.FC = () => {
   const { logout } = useAuthStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const handleConfirmLogout = () => {
+  const handleConfirmLogout = async () => {
     setShowLogoutConfirm(false);
-    logout();
+    await supabaseLogout();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }],

@@ -6,6 +6,7 @@ export interface NotificationItem {
   message: string;
   isRead: boolean;
   createdAt: string;
+  timeAgo: string;
   sender: {
     id: string;
     name: string;
@@ -18,62 +19,111 @@ export interface NotificationItem {
 }
 
 /**
+ * Tính thời gian hiển thị tương đối (vd: 2 phút trước, 1 giờ trước)
+ */
+function formatTimeAgo(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffSec < 60) return 'Vừa xong';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays} ngày trước`;
+    return date.toLocaleDateString('vi-VN');
+  } catch {
+    return 'Gần đây';
+  }
+}
+
+/**
  * Lấy danh sách thông báo của người dùng (S22 - Thông báo)
  */
 export async function getNotifications(recipientId: string): Promise<NotificationItem[]> {
-  const { data, error } = await supabase
-    .from('notifications')
-    .select(`
-      *,
-      sender:sender_id (id, display_name, avatar_url),
-      video:video_id (id, cover_url)
-    `)
-    .eq('recipient_id', recipientId)
-    .order('created_at', { ascending: false });
+  try {
+    // 1. Lấy danh sách notifications kèm thông tin video
+    const { data: notifs, error } = await supabase
+      .from('notifications')
+      .select('*, video:video_id (id, cover_url)')
+      .eq('recipient_id', recipientId)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching notifications:', error);
-    throw error;
-  }
-
-  return (data || []).map((n: any) => {
-    let msg = '';
-    switch (n.type) {
-      case 'like':
-        msg = 'liked your video';
-        break;
-      case 'comment':
-        msg = 'commented on your video';
-        break;
-      case 'follow':
-        msg = 'started following you';
-        break;
-      case 'mention':
-        msg = 'mentioned you';
-        break;
-      default:
-        msg = 'sent you an update';
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      throw error;
     }
 
-    return {
-      id: n.id,
-      type: n.type,
-      message: msg,
-      isRead: n.is_read,
-      createdAt: n.created_at,
-      sender: {
-        id: n.sender?.id || '',
-        name: n.sender?.display_name || 'Someone',
-        avatar: n.sender?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-      },
-      video: n.video
-        ? {
-            id: n.video.id,
-            coverUrl: n.video.cover_url,
-          }
-        : undefined,
-    };
-  });
+    if (!notifs || notifs.length === 0) {
+      return [];
+    }
+
+    // 2. Lấy thông tin sender từ bảng users một cách độc lập (an toàn tuyệt đối, không lo thiếu FK)
+    const senderIds = [...new Set(notifs.map((n: any) => n.sender_id).filter(Boolean))];
+    const senderMap = new Map<string, { id: string; display_name: string; avatar_url: string }>();
+
+    if (senderIds.length > 0) {
+      const { data: senders } = await supabase
+        .from('users')
+        .select('id, display_name, avatar_url')
+        .in('id', senderIds);
+
+      (senders || []).forEach((s: any) => {
+        senderMap.set(s.id, s);
+      });
+    }
+
+    // 3. Chuẩn hóa dữ liệu trả về cho giao diện
+    return notifs.map((n: any) => {
+      let msg = '';
+      switch (n.type) {
+        case 'like':
+          msg = 'đã thích video của bạn';
+          break;
+        case 'comment':
+          msg = 'đã bình luận về video của bạn';
+          break;
+        case 'follow':
+          msg = 'đã bắt đầu theo dõi bạn';
+          break;
+        case 'mention':
+          msg = 'đã nhắc đến bạn trong bình luận';
+          break;
+        default:
+          msg = 'đã gửi tương tác mới';
+      }
+
+      const senderInfo = senderMap.get(n.sender_id);
+
+      return {
+        id: n.id,
+        type: n.type,
+        message: msg,
+        isRead: n.is_read,
+        createdAt: n.created_at,
+        timeAgo: formatTimeAgo(n.created_at),
+        sender: {
+          id: senderInfo?.id || n.sender_id || '',
+          name: senderInfo?.display_name || 'Người dùng',
+          avatar:
+            senderInfo?.avatar_url ||
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+        },
+        video: n.video
+          ? {
+              id: n.video.id,
+              coverUrl: n.video.cover_url,
+            }
+          : undefined,
+      };
+    });
+  } catch (err) {
+    console.error('getNotifications exception:', err);
+    throw err;
+  }
 }
 
 /**
@@ -86,3 +136,12 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
     .eq('id', notificationId);
 }
 
+/**
+ * Đánh dấu tất cả thông báo của người dùng là đã đọc
+ */
+export async function markAllNotificationsAsRead(recipientId: string): Promise<void> {
+  await supabase
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('recipient_id', recipientId);
+}

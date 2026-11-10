@@ -51,9 +51,9 @@ function mapVideoItem(v: any, isLiked = false): VideoDetailItem {
     createdAt: v.created_at,
     visibility: v.visibility,
     creator: {
-      id: v.profiles?.id || '',
-      name: v.profiles?.display_name || 'Anonymous',
-      avatar: v.profiles?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+      id: v.users?.id || v.profiles?.id || '',
+      name: v.users?.display_name || v.profiles?.display_name || 'Anonymous',
+      avatar: v.users?.avatar_url || v.profiles?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
     },
     audioTrack: v.audio_tracks
       ? {

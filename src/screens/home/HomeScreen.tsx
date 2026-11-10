@@ -15,7 +15,7 @@ import { BrowseTopics } from '../../components/cards/BrowseTopics';
 import { VideoCard } from '../../components/cards/VideoCard';
 import { AudioCard } from '../../components/AudioCard';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 // Import Services trực tiếp từ Supabase
@@ -39,6 +39,7 @@ const mockStories = [
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
 
   // State dữ liệu từ Supabase
   const [trendingVideos, setTrendingVideos] = useState<VideoDetailItem[]>([]);
@@ -75,6 +76,14 @@ export const HomeScreen: React.FC = () => {
   useEffect(() => {
     fetchHomeData();
   }, [fetchHomeData]);
+
+  // Pause audio when leaving Home screen
+  useEffect(() => {
+    if (!isFocused && status.playing) {
+      player.pause();
+      setCurrentAudioId(null);
+    }
+  }, [isFocused, status.playing, player]);
 
   const onRefresh = () => {
     setRefreshing(true);

@@ -1,6 +1,14 @@
 export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
+  OTP?: {
+    email: string;
+    displayName?: string;
+  };
+  S14?: {
+    email: string;
+    displayName?: string;
+  };
   S12: undefined;
   MainTabs: undefined;
   Camera: undefined;
@@ -18,6 +26,12 @@ export type RootStackParamList = {
     audioUri?: string;
     filterApplied?: string;
   };
+  VideoList?: {
+    title: string;
+    type?: string;
+    topicId?: string;
+  };
+  AudioList: undefined;
   EditProfile: undefined;
   S15: undefined;
   Settings: undefined;

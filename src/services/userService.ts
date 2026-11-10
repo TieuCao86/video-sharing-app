@@ -17,13 +17,13 @@ export interface UserProfileItem {
  */
 export async function getProfileById(userId: string, currentUserId?: string): Promise<UserProfileItem | null> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
-    console.error('Error fetching profile:', error);
+    console.error('Error fetching user profile:', error);
     return null;
   }
 
@@ -55,7 +55,7 @@ export async function getProfileById(userId: string, currentUserId?: string): Pr
  */
 export async function searchProfiles(query: string, currentUserId?: string): Promise<UserProfileItem[]> {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .ilike('display_name', `%${query}%`)
     .order('followers_count', { ascending: false });
@@ -85,7 +85,7 @@ export async function updateProfile(
   updates: { display_name?: string; bio?: string; avatar_url?: string }
 ): Promise<boolean> {
   const { error } = await supabase
-    .from('profiles')
+    .from('users')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', userId);
 
