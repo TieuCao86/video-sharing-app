@@ -10,6 +10,7 @@ import { ReelDetailScreen } from '../screens/reel/ReelDetailScreen';
 import { CameraScreen } from '../screens/camera';
 import { VideoListScreen } from '../screens/video-list';
 import { AudioListScreen } from '../screens/audio/AudioListScreen';
+import { UserProfileScreen } from '../screens/profile/UserProfileScreen';
 import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
@@ -55,6 +56,13 @@ export const AppNavigator = () => {
         <Stack.Screen
           name="AudioList"
           component={AudioListScreen}
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
+        />
+
+        {/* User Profile Screen */}
+        <Stack.Screen
+          name="UserProfile"
+          component={UserProfileScreen}
           options={{ presentation: 'card', animation: 'slide_from_right' }}
         />
 

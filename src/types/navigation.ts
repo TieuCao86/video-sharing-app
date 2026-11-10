@@ -32,6 +32,9 @@ export type RootStackParamList = {
     topicId?: string;
   };
   AudioList: undefined;
+  UserProfile: {
+    userId: string;
+  };
   EditProfile: undefined;
   S15: undefined;
   Settings: undefined;

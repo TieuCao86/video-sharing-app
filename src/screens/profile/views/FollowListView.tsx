@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, Text } from 'react-native';
 import { colors } from '../../../constants/colors';
 import { ApiUser } from '../../../types/user.type';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
@@ -9,10 +9,11 @@ import {
 } from '../../../components/profile/ProfileTabBar';
 import { UserListItem } from '../../../components/profile/UserListItem';
 import { useAuthStore } from '../../../store/useAuthStore';
+import { getFollowList, toggleFollowUser, UserProfileItem } from '../../../services/userService';
 
 interface FollowListViewProps {
   owner: ApiUser;
-  allUsers: ApiUser[];
+  allUsers?: ApiUser[];
   initialTab?: 'followers' | 'following';
   onBack: () => void;
   onSelectUser: (userId: string) => void;
@@ -20,19 +21,31 @@ interface FollowListViewProps {
 
 export const FollowListView: React.FC<FollowListViewProps> = ({
   owner,
-  allUsers,
   initialTab = 'following',
   onBack,
   onSelectUser,
 }) => {
-  const { checkAuth } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'followers' | 'following'>(
-    initialTab
-  );
-  // Track local following toggles for each row
-  const [unfollowedUserIds, setUnfollowedUserIds] = useState<Set<string>>(
-    new Set()
-  );
+  const { user: authUser, checkAuth } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [usersList, setUsersList] = useState<UserProfileItem[]>([]);
+  const [unfollowedUserIds, setUnfollowedUserIds] = useState<Set<string>>(new Set());
+
+  const fetchList = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await getFollowList(owner.id, activeTab, authUser?.id);
+      setUsersList(list);
+    } catch (err) {
+      console.error('Error fetching follow list:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [owner.id, activeTab, authUser?.id]);
+
+  useEffect(() => {
+    fetchList();
+  }, [fetchList]);
 
   const tabs: [TabItem, TabItem] = useMemo(
     () => [
@@ -42,21 +55,23 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
     [owner.followers, owner.following]
   );
 
-  const listUsers = useMemo(() => {
-    return allUsers.filter((u) => u.id !== owner.id);
-  }, [allUsers, owner.id]);
-
-  const handleToggleFollow = (id: string) => {
-    checkAuth(() => {
-      setUnfollowedUserIds((prev) => {
-        const updated = new Set(prev);
-        if (updated.has(id)) {
-          updated.delete(id);
-        } else {
-          updated.add(id);
-        }
-        return updated;
-      });
+  const handleToggleFollow = (targetId: string) => {
+    checkAuth(async () => {
+      if (!authUser?.id) return;
+      try {
+        const isNowFollowing = await toggleFollowUser(authUser.id, targetId);
+        setUnfollowedUserIds((prev) => {
+          const updated = new Set(prev);
+          if (isNowFollowing) {
+            updated.delete(targetId);
+          } else {
+            updated.add(targetId);
+          }
+          return updated;
+        });
+      } catch (err) {
+        console.error('Error toggling follow:', err);
+      }
     });
   };
 
@@ -75,20 +90,46 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
         onSelectTab={(key) => setActiveTab(key as 'followers' | 'following')}
       />
 
-      <FlatList
-        data={listUsers}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <UserListItem
-            user={item}
-            isFollowing={!unfollowedUserIds.has(item.id)}
-            onPressRow={() => onSelectUser(item.id)}
-            onToggleFollow={() => handleToggleFollow(item.id)}
-          />
-        )}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
+      {loading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : usersList.length === 0 ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>
+            {activeTab === 'followers'
+              ? 'Chưa có người theo dõi nào.'
+              : 'Chưa theo dõi người dùng nào.'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={usersList}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const isFollowing = !unfollowedUserIds.has(item.id);
+            return (
+              <UserListItem
+                user={{
+                  id: item.id,
+                  name: item.name,
+                  avatar: item.avatar,
+                  following: item.following,
+                  followers: item.followers,
+                  likes: item.likes,
+                  videos: '',
+                  bio: item.bio,
+                }}
+                isFollowing={isFollowing}
+                onPressRow={() => onSelectUser(item.id)}
+                onToggleFollow={() => handleToggleFollow(item.id)}
+              />
+            );
+          }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
     </View>
   );
 };
@@ -98,8 +139,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#888888',
+    textAlign: 'center',
+  },
   listContent: {
     paddingBottom: 24,
   },
 });
-

@@ -17,6 +17,7 @@ import { colors } from '../../constants/colors';
 import { Avatar } from '../../components/common/Avatar';
 import { CustomButton } from '../../components/buttons/CustomButton';
 import { useAuthStore, DEFAULT_USER } from '../../store/useAuthStore';
+import { updateProfile as updateProfileService } from '../../services/userService';
 
 const MAX_BIO_LENGTH = 150;
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -83,7 +84,7 @@ export const EditProfileScreen: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     let valid = true;
     const trimmedName = displayName.trim();
 
@@ -104,22 +105,34 @@ export const EditProfileScreen: React.FC = () => {
     if (!valid) return;
 
     setIsSaving(true);
-    updateProfile({
-      name: trimmedName,
-      bio: bio.trim(),
-      avatar: avatarUri,
-    });
-
-    if (route.params?.onSave) {
-      route.params.onSave({
+    try {
+      if (user?.id) {
+        await updateProfileService(user.id, {
+          display_name: trimmedName,
+          bio: bio.trim(),
+          avatar_url: avatarUri,
+        });
+      }
+      updateProfile({
         name: trimmedName,
         bio: bio.trim(),
         avatar: avatarUri,
       });
-    }
 
-    setIsSaving(false);
-    navigation.goBack();
+      if (route.params?.onSave) {
+        route.params.onSave({
+          name: trimmedName,
+          bio: bio.trim(),
+          avatar: avatarUri,
+        });
+      }
+
+      setIsSaving(false);
+      navigation.goBack();
+    } catch (err: any) {
+      setIsSaving(false);
+      setNameError(err?.message || 'Không thể lưu thay đổi. Vui lòng thử lại.');
+    }
   };
 
   return (
