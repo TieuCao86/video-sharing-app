@@ -31,10 +31,6 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = (props) => {
   if (props.type === 'A') {
     return (
       <View style={styles.container}>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Ionicons name="menu-outline" size={24} color={colors.text} />
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.editProfileButton}
           onPress={props.onEditProfile}
@@ -47,6 +43,14 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = (props) => {
             style={styles.pencilIcon}
           />
           <Text style={styles.editProfileText}>Edit Profile</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          onPress={props.onOptions}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="menu-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
     );

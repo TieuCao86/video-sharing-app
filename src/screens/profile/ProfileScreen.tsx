@@ -14,6 +14,8 @@ import { CustomButton } from '../../components/buttons/CustomButton';
 import { MyProfileView } from './views/MyProfileView';
 import { UserProfileView } from './views/UserProfileView';
 import { FollowListView } from './views/FollowListView';
+import { useAuthStore } from '../../store/useAuthStore';
+import { LoginRequiredModal } from '../../components/auth/LoginRequiredModal';
 
 type ViewState =
   | { type: 'A' }
@@ -21,6 +23,7 @@ type ViewState =
   | { type: 'C'; ownerId: string; initialTab: 'followers' | 'following' };
 
 export const ProfileScreen: React.FC = () => {
+  const { user: authUser } = useAuthStore();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -120,9 +123,13 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  // "Me" defaults to constant DEFAULT_CURRENT_USER_ID ('1')
-  const myUser =
+  // "Me" defaults to constant DEFAULT_CURRENT_USER_ID ('1'), merged with store updates
+  const baseUser =
     users.find((u) => u.id === DEFAULT_CURRENT_USER_ID) || users[0];
+  const myUser = {
+    ...baseUser,
+    ...(authUser || {}),
+  };
 
   const currentView = history[history.length - 1];
 
@@ -164,7 +171,12 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
-  return <SafeAreaView style={styles.container}>{content}</SafeAreaView>;
+  return (
+    <SafeAreaView style={styles.container}>
+      {content}
+      <LoginRequiredModal />
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({

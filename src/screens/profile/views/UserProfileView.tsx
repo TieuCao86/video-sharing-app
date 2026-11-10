@@ -22,6 +22,7 @@ import {
   PLACEHOLDER_BIO,
   PLACEHOLDER_VIEW_COUNT,
 } from '../../../constants/profile';
+import { useAuthStore } from '../../../store/useAuthStore';
 
 interface UserProfileViewProps {
   user: ApiUser;
@@ -47,6 +48,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   isFollowing = false,
   onToggleFollowProfile,
 }) => {
+  const { checkAuth } = useAuthStore();
   // Spec: Liked tab is ACTIVE by default on View B
   const [activeTab, setActiveTab] = useState<'videos' | 'liked'>('liked');
   const [dismissedUserIds, setDismissedUserIds] = useState<Set<string>>(new Set());
@@ -139,7 +141,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
         <CustomButton
           title={isFollowing ? 'Following' : 'Follow'}
           variant={isFollowing ? 'muted-outline' : 'primary'}
-          onPress={onToggleFollowProfile || (() => {})}
+          onPress={() => checkAuth(onToggleFollowProfile || (() => {}))}
           style={styles.mainFollowButton}
           textStyle={styles.mainFollowText}
         />
@@ -166,7 +168,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
                   isFollowing={followedSuggestionIds.has(item.id)}
                   onPressCard={() => onSelectUser(item.id)}
                   onDismiss={() => handleDismissSuggestion(item.id)}
-                  onToggleFollow={() => handleToggleFollowSuggestion(item.id)}
+                  onToggleFollow={() =>
+                    checkAuth(() => handleToggleFollowSuggestion(item.id))
+                  }
                 />
               ))}
             </ScrollView>

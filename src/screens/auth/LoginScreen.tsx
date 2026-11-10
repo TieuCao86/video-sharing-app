@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { CustomButton } from "../../components/buttons/CustomButton";
+import { authStore } from "../../store/useAuthStore";
 
 interface LoginScreenProps {
   onLogin?: () => void;
@@ -33,6 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       setIsLoading(false);
 
       if (email.trim() === "admin@gmail.com" && password === "123456") {
+        authStore.login();
         onLogin?.();
       } else {
         alert("Email hoặc mật khẩu không chính xác!");
@@ -114,11 +116,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         />
 
         <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Don't have an account? </Text>
+          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
           <TouchableOpacity onPress={onNavigateToRegister}>
             <Text style={styles.linkText}>Register now</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          onPress={() => {
+            authStore.logout();
+            onLogin?.();
+          }}
+          style={styles.guestButton}
+        >
+          <Text style={styles.guestButtonText}>Explore as Guest</Text>
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -160,4 +172,14 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 24 },
   footerText: { fontSize: 14, color: "#666666" },
   linkText: { fontSize: 14, color: "#2B6CB0", fontWeight: "600" },
+  guestButton: {
+    marginTop: 18,
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  guestButtonText: {
+    fontSize: 14,
+    color: "#8E8E93",
+    fontWeight: "500",
+  },
 });

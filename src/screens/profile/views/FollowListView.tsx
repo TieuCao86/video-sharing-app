@@ -8,6 +8,7 @@ import {
   TabItem,
 } from '../../../components/profile/ProfileTabBar';
 import { UserListItem } from '../../../components/profile/UserListItem';
+import { useAuthStore } from '../../../store/useAuthStore';
 
 interface FollowListViewProps {
   owner: ApiUser;
@@ -24,6 +25,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   onBack,
   onSelectUser,
 }) => {
+  const { checkAuth } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(
     initialTab
   );
@@ -45,14 +47,16 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   }, [allUsers, owner.id]);
 
   const handleToggleFollow = (id: string) => {
-    setUnfollowedUserIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(id)) {
-        updated.delete(id);
-      } else {
-        updated.add(id);
-      }
-      return updated;
+    checkAuth(() => {
+      setUnfollowedUserIds((prev) => {
+        const updated = new Set(prev);
+        if (updated.has(id)) {
+          updated.delete(id);
+        } else {
+          updated.add(id);
+        }
+        return updated;
+      });
     });
   };
 
