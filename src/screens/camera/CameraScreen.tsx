@@ -17,10 +17,12 @@ import { FilterBottomSheet, Filter } from '../../components/FilterBottomSheet';
 import { FilterOverlay } from '../../components/FilterOverlay';
 import { TimerBottomSheet, TimerOption } from '../../components/TimerBottomSheet';
 import { AudioBottomSheet, AudioTrack } from '../../components/AudioBottomSheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CameraScreen() {
   const navigation = useNavigation();
   const cameraRef = useRef<any>(null);
+  const insets = useSafeAreaInsets();
   
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
@@ -185,7 +187,7 @@ export default function CameraScreen() {
       )}
 
       {/* Top Bar - Outside CameraView */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 24) }]}>
         {/* Close Button */}
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Ionicons name="close" size={28} color="white" />
@@ -267,7 +269,7 @@ export default function CameraScreen() {
       </View>
 
       {/* Bottom Controls - Outside CameraView */}
-      <View style={styles.bottomControls}>
+      <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) }]}>
         {/* Effect Button */}
         <TouchableOpacity style={styles.effectButton} onPress={handleEffect}>
           <MaterialCommunityIcons name="emoticon-happy-outline" size={28} color="white" />

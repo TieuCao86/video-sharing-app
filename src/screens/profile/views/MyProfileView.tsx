@@ -20,17 +20,9 @@ interface MyProfileViewProps {
   onOpenFollowList: (tab: 'followers' | 'following') => void;
 }
 
-interface DraftVideo {
-  id: string;
-  thumbnail: string;
-  views: string;
-  isDraft: boolean;
-}
-
 const TABS: TabItem[] = [
   { key: 'my-videos', label: 'My Videos', iconName: 'play-outline' },
   { key: 'liked', label: 'Liked', iconName: 'heart-outline' },
-  { key: 'drafts', label: 'Drafts', iconName: 'document-outline' },
 ];
 
 const getRandomVideoId = (): string => {
@@ -45,7 +37,7 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
   onOpenFollowList,
 }) => {
   const navigation = useNavigation<any>();
-  const [activeTab, setActiveTab] = useState<'my-videos' | 'liked' | 'drafts'>('my-videos');
+  const [activeTab, setActiveTab] = useState<'my-videos' | 'liked'>('my-videos');
 
   // Fill grid with owner's video first, then other users' videos
   const videoItems = useMemo(() => {
@@ -70,27 +62,14 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     return combined;
   }, [user, allUsers]);
 
-  // Mock draft videos data
-  const draftVideos = useMemo((): DraftVideo[] => [
-    { id: 'draft-1', thumbnail: 'https://picsum.photos/seed/draft1/300/400', views: 'Draft', isDraft: true },
-    { id: 'draft-2', thumbnail: 'https://picsum.photos/seed/draft2/300/400', views: 'Draft', isDraft: true },
-    { id: 'draft-3', thumbnail: 'https://picsum.photos/seed/draft3/300/400', views: 'Draft', isDraft: true },
-    { id: 'draft-4', thumbnail: 'https://picsum.photos/seed/draft4/300/400', views: 'Draft', isDraft: true },
-    { id: 'draft-5', thumbnail: 'https://picsum.photos/seed/draft5/300/400', views: 'Draft', isDraft: true },
-    { id: 'draft-6', thumbnail: 'https://picsum.photos/seed/draft6/300/400', views: 'Draft', isDraft: true },
-  ], []);
-
   // Liked tab uses a different slice of the video list
   const displayedVideos = useMemo(() => {
     if (activeTab === 'liked') {
       const slice = videoItems.slice(2);
       return slice.length >= 6 ? slice : [...slice, ...videoItems.slice(0, 6 - slice.length)];
     }
-    if (activeTab === 'drafts') {
-      return draftVideos;
-    }
     return videoItems;
-  }, [activeTab, videoItems, draftVideos]);
+  }, [activeTab, videoItems]);
 
   const handleVideoPress = () => {
     const videoId = getRandomVideoId();
@@ -141,7 +120,7 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
         <ProfileTabBar
           tabs={TABS}
           activeTab={activeTab}
-          onSelectTab={(key) => setActiveTab(key as 'my-videos' | 'liked' | 'drafts')}
+          onSelectTab={(key) => setActiveTab(key as 'my-videos' | 'liked')}
         />
 
         <VideoThumbnailGrid
@@ -182,4 +161,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 });
-

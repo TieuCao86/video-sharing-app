@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   Image,
@@ -13,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { VideoItem } from "../../components/VideoItem";
@@ -126,6 +126,7 @@ export const ReelDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
   const { checkAuth } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   const videoId = route.params?.videoId || '3';
   
@@ -219,14 +220,14 @@ export const ReelDetailScreen: React.FC = () => {
       />
 
       {/* Close Button Overlay */}
-      <SafeAreaView style={styles.closeButtonContainer}>
+      <View style={[styles.closeButtonContainer, { top: Math.max(insets.top, 16) }]}>
         <TouchableOpacity
           style={styles.closeButton}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="close" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
 
       {/* MODAL COMMENTS */}
       <Modal
@@ -282,7 +283,7 @@ export const ReelDetailScreen: React.FC = () => {
             />
 
             {/* Ô nhập bình luận */}
-            <View style={styles.commentInputContainer}>
+            <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <TextInput
                 style={styles.commentInput}
                 placeholder="Leave comment..."
