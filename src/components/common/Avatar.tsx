@@ -21,6 +21,11 @@ export const Avatar: React.FC<AvatarProps> = ({
 }) => {
   const [hasError, setHasError] = useState(false);
 
+  // Reset error state if uri changes
+  React.useEffect(() => {
+    setHasError(false);
+  }, [uri]);
+
   const imageSize = ringColor ? size - (ringWidth + ringGap) * 2 : size;
 
   const content = (

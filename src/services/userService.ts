@@ -1,4 +1,5 @@
 import { supabase } from '../utils/supabase';
+import { decode } from 'base64-arraybuffer';
 
 export interface UserProfileItem {
   id: string;
@@ -97,20 +98,58 @@ export async function searchProfiles(query: string, currentUserId?: string): Pro
 }
 
 /**
+ * Upload ảnh avatar lên Supabase Storage hoặc lưu dưới dạng Base64
+ */
+
+export async function uploadAvatar(
+  userId: string,
+  imageUri: string,
+  base64Data?: string | null
+): Promise<string> {
+  const ext = (imageUri.split('?')[0].split('.').pop() || 'jpg').toLowerCase();
+  const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  const filePath = `avatars/${userId}_${Date.now()}.${ext}`;
+
+  const fileBody = base64Data
+    ? decode(base64Data.replace(/^data:image\/\w+;base64,/, ''))
+    : await (await fetch(imageUri)).arrayBuffer();
+
+  const { error } = await supabase.storage
+    .from('Image') // kiểm tra đúng tên bucket
+    .upload(filePath, fileBody, { contentType, upsert: true });
+
+  if (error) {
+    console.error('[uploadAvatar] storage error:', error);
+    throw error;
+  }
+
+  const { data } = supabase.storage.from('Image').getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
+/**
  * Cập nhật thông tin Profile (S15 - Chỉnh sửa hồ sơ)
  */
 export async function updateProfile(
   userId: string,
   updates: { display_name?: string; bio?: string; avatar_url?: string }
 ): Promise<boolean> {
-  const { error } = await supabase
+  const { data, error, status } = await supabase
     .from('users')
     .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq('id', userId);
+    .eq('auth_id', userId)
+    .select();
+
+  console.log('[updateProfile]', { userId, status, rows: data?.length, error });
 
   if (error) {
     console.error('Error updating profile:', error);
     throw error;
+  }
+  if (!data || data.length === 0) {
+    throw new Error(
+      'Không cập nhật được dòng nào: id không khớp hoặc RLS chặn UPDATE trên bảng users'
+    );
   }
   return true;
 }
