@@ -171,7 +171,7 @@ export async function verifyOtpCode(
       following_count: 0,
       followers_count: 0,
       likes_count: 0,
-      videos_count: 0,
+      videos_count: 0
     });
 
     // Đăng xuất phiên tạm để bắt người dùng đăng nhập tại màn hình Login
