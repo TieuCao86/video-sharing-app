@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,9 +20,20 @@ import { VideoItem } from "../../components/VideoItem";
 import { useAuthStore } from "../../store/useAuthStore";
 import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
 
+// Services kết nối Supabase
+import {
+  getTrendingVideos,
+  incrementVideoView,
+  toggleLikeVideo,
+  getCommentsByVideoId,
+  addComment,
+  VideoDetailItem,
+  CommentItem,
+} from "../../services";
+
 const { width, height } = Dimensions.get("window");
 
-// Mock video data - Using reliable public video URLs
+// Giữ lại MOCK_VIDEOS_ARRAY cho các component profile cũ không bị lỗi export
 export interface VideoData {
   id: string;
   url: string;
@@ -32,87 +44,33 @@ export interface VideoData {
 
 export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   {
-    id: '1',
+    id: 'e0000001-0000-4000-8000-000000000001',
     url: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Video/360429_small.mp4',
     creator: 'Laura',
     caption: 'Amazing sunset timelapse #nature #sunset',
     audio: 'Summer Vibes - DJ Mix'
   },
   {
-    id: '2',
+    id: 'e0000001-0000-4000-8000-000000000002',
     url: 'https://www.w3schools.com/html/mov_bbb.mp4',
     creator: 'William',
     caption: 'Travel vlog - Paris adventure #travel #paris',
     audio: 'La Vie En Rose - Edith Piaf'
   },
   {
-    id: '3',
+    id: 'e0000001-0000-4000-8000-000000000003',
     url: 'https://download.samplelib.com/mp4/sample-5s.mp4',
     creator: 'Julia',
     caption: 'She waits for me #lovepet #cat',
     audio: 'Baby shark - Kingfong'
   },
   {
-    id: '4',
+    id: 'e0000001-0000-4000-8000-000000000004',
     url: 'https://download.samplelib.com/mp4/sample-10s.mp4',
     creator: 'Peter',
     caption: 'How to cook perfect pasta #cooking #food',
     audio: 'Italian Music - Bella Notte'
-  },
-  {
-    id: '5',
-    url: 'https://download.samplelib.com/mp4/sample-15s.mp4',
-    creator: 'Adam',
-    caption: 'Epic mountain climbing #adventure #mountain',
-    audio: 'Epic Journey - Hans Zimmer'
-  },
-  {
-    id: '6',
-    url: 'https://download.samplelib.com/mp4/sample-20s.mp4',
-    creator: 'Liz',
-    caption: 'Dance performance highlights #dance #performance',
-    audio: 'Pop Hit - Dance Mix'
-  },
-];
-
-// Dữ liệu mẫu bình luận
-const mockComments = [
-  {
-    id: "1",
-    user: { name: "Laura", avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" },
-    content: "So cute, I wish my cat was like that",
-    timeAgo: "6 mins ago",
-    isLiked: false,
-  },
-  {
-    id: "2",
-    user: { name: "Lauren", avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100" },
-    content: 'Look at her, as if "mom, i want food"',
-    timeAgo: "20 mins ago",
-    isLiked: false,
-  },
-  {
-    id: "3",
-    user: { name: "Liz", avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100" },
-    content:
-      "My cats also often wait for me to come home from work in front of the door hehe",
-    timeAgo: "24 mins ago",
-    isLiked: false,
-  },
-  {
-    id: "4",
-    user: { name: "Anne", avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100" },
-    content: "Awwwwww",
-    timeAgo: "30 mins ago",
-    isLiked: false,
-  },
-  {
-    id: "5",
-    user: { name: "Larry", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100" },
-    content: "I want to cuddle",
-    timeAgo: "20 mins ago",
-    isLiked: false,
-  },
+  }
 ];
 
 type RouteParams = {
@@ -125,33 +83,121 @@ export const ReelDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
-  const { checkAuth } = useAuthStore();
-  const insets = useSafeAreaInsets();
+  const { checkAuth, user } = useAuthStore();
   
-  const videoId = route.params?.videoId || '3';
-  
-  // Find initial index based on videoId
-  const initialIndex = MOCK_VIDEOS_ARRAY.findIndex(v => v.id === videoId);
-  const startIndex = initialIndex !== -1 ? initialIndex : 0;
-  
-  const [currentIndex, setCurrentIndex] = useState(startIndex);
+  const initialVideoId = route.params?.videoId;
+
+  const [videos, setVideos] = useState<VideoDetailItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Comments state
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [commentText, setCommentText] = useState("");
-  const [comments, setComments] = useState(mockComments);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likes, setLikes] = useState(19600);
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
 
-  // Scroll to initial video on mount
+  // Fetch danh sách video từ Supabase
   useEffect(() => {
-    if (flatListRef.current && startIndex > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: startIndex,
-          animated: false,
-        });
-      }, 100);
+    async function loadVideos() {
+      try {
+        const fetchedVideos = await getTrendingVideos(20);
+        setVideos(fetchedVideos);
+
+        // Tìm vị trí của video được nhấn từ danh sách
+        if (initialVideoId && fetchedVideos.length > 0) {
+          const foundIdx = fetchedVideos.findIndex((v) => v.id === initialVideoId);
+          if (foundIdx !== -1) {
+            setCurrentIndex(foundIdx);
+            setTimeout(() => {
+              flatListRef.current?.scrollToIndex({
+                index: foundIdx,
+                animated: false,
+              });
+            }, 100);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading videos in ReelDetail:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  }, []);
+    loadVideos();
+  }, [initialVideoId]);
+
+  const currentVideo = videos[currentIndex];
+
+  // Khi chuyển video -> Tăng lượt xem (UC12)
+  useEffect(() => {
+    if (currentVideo?.id) {
+      incrementVideoView(currentVideo.id);
+    }
+  }, [currentIndex, currentVideo?.id]);
+
+  // Load comments từ Supabase khi mở Modal bình luận
+  const loadComments = useCallback(async (vidId: string) => {
+    setLoadingComments(true);
+    try {
+      const data = await getCommentsByVideoId(vidId, user?.id);
+      setComments(data);
+    } catch (err) {
+      console.error("Error loading comments:", err);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, [user?.id]);
+
+  const handleOpenComments = () => {
+    if (currentVideo?.id) {
+      loadComments(currentVideo.id);
+      setIsCommentVisible(true);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!commentText.trim() || !currentVideo?.id) return;
+
+    checkAuth(async () => {
+      try {
+        const newCmt = await addComment(currentVideo.id, user.id, commentText);
+        setComments((prev) => [newCmt, ...prev]);
+        setCommentText("");
+        // Cập nhật số đếm comment trên video
+        setVideos((prev) =>
+          prev.map((v, i) =>
+            i === currentIndex ? { ...v, commentsCount: v.commentsCount + 1 } : v
+          )
+        );
+      } catch (err: any) {
+        alert(err.message || "Không thể gửi bình luận");
+      }
+    });
+  };
+
+  const handleToggleLike = async () => {
+    if (!currentVideo?.id) return;
+
+    checkAuth(async () => {
+      try {
+        const nextLikedState = await toggleLikeVideo(user.id, currentVideo.id);
+        setVideos((prev) =>
+          prev.map((v, i) => {
+            if (i === currentIndex) {
+              return {
+                ...v,
+                isLiked: nextLikedState,
+                likesCount: nextLikedState ? v.likesCount + 1 : Math.max(v.likesCount - 1, 0),
+              };
+            }
+            return v;
+          })
+        );
+      } catch (err) {
+        console.error("Error toggle like video:", err);
+      }
+    });
+  };
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -159,77 +205,60 @@ export const ReelDetailScreen: React.FC = () => {
     }
   }).current;
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current;
-
-  const handleAddComment = () => {
-    checkAuth(() => {
-      if (!commentText.trim()) return;
-      const newComment = {
-        id: Date.now().toString(),
-        user: { name: "You", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" },
-        content: commentText,
-        timeAgo: "Just now",
-        isLiked: false,
-      };
-      setComments([newComment, ...comments]);
-      setCommentText("");
-    });
-  };
-
-  const handleLike = () => {
-    checkAuth(() => {
-      setIsLiked(!isLiked);
-      setLikes(prev => isLiked ? prev - 1 : prev + 1);
-    });
-  };
-
-  const renderVideoItem = ({ item, index }: { item: VideoData; index: number }) => (
-    <VideoItem
-      video={item}
-      isActive={index === currentIndex}
-      onCommentPress={() => checkAuth(() => setIsCommentVisible(true))}
-      likes={likes}
-      isLiked={isLiked}
-      onLikePress={handleLike}
-      commentsCount={comments.length}
-    />
-  );
+  if (loading) {
+    return (
+      <View style={styles.centerLoading}>
+        <ActivityIndicator size="large" color="#FF2442" />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* Video FlatList - Vertical Paging */}
+    <SafeAreaView style={styles.container}>
+      {/* Nút Back / Đóng toàn màn hình */}
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => navigation.goBack()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="close" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
       <FlatList
         ref={flatListRef}
-        data={MOCK_VIDEOS_ARRAY}
-        renderItem={renderVideoItem}
+        data={videos}
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={height}
-        snapToAlignment="start"
-        decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        getItemLayout={(data, index) => ({
+        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+        getItemLayout={(_, index) => ({
           length: height,
           offset: height * index,
           index,
         })}
+        renderItem={({ item, index }) => (
+          <View style={styles.videoContainer}>
+            <VideoItem
+              video={{
+                id: item.id,
+                url: item.videoUrl,
+                creator: item.creator.name,
+                caption: item.caption,
+                audio: item.audioTrack?.title || 'Original Sound',
+              }}
+              isActive={currentIndex === index}
+              likes={item.likesCount}
+              isLiked={!!item.isLiked}
+              commentsCount={item.commentsCount}
+              onLikePress={handleToggleLike}
+              onCommentPress={handleOpenComments}
+            />
+          </View>
+        )}
       />
 
-      {/* Close Button Overlay */}
-      <View style={[styles.closeButtonContainer, { top: Math.max(insets.top, 16) }]}>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="close" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* MODAL COMMENTS */}
+      {/* MODAL COMMENT (BOTTOM SHEET S04) */}
       <Modal
         visible={isCommentVisible}
         animationType="slide"
@@ -238,64 +267,52 @@ export const ReelDetailScreen: React.FC = () => {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
+          style={styles.modalBackdrop}
         >
-          <TouchableOpacity
-            style={styles.modalDismissArea}
-            activeOpacity={1}
-            onPress={() => setIsCommentVisible(false)}
-          />
-
-          <View style={styles.commentSheetContainer}>
-            {/* Header của Modal */}
+          <View style={styles.commentSheet}>
             <View style={styles.commentHeader}>
               <Text style={styles.commentTitle}>{comments.length} comments</Text>
               <TouchableOpacity onPress={() => setIsCommentVisible(false)}>
-                <Ionicons name="close" size={22} color="#000000" />
+                <Ionicons name="close" size={24} color="#000000" />
               </TouchableOpacity>
             </View>
 
-            {/* Danh sách bình luận */}
-            <FlatList
-              data={comments}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingBottom: 20,
-              }}
-              renderItem={({ item }) => (
-                <View style={styles.commentItem}>
-                  <Image
-                    source={{ uri: item.user.avatar }}
-                    style={styles.commentAvatar}
-                  />
-                  <View style={styles.commentContentWrapper}>
-                    <Text style={styles.commentUsername}>{item.user.name}</Text>
-                    <Text style={styles.commentText}>{item.content}</Text>
-                    <Text style={styles.commentTime}>{item.timeAgo}</Text>
+            {loadingComments ? (
+              <View style={{ flex: 1, justifyContent: "center" }}>
+                <ActivityIndicator size="small" color="#FF2442" />
+              </View>
+            ) : (
+              <FlatList
+                data={comments}
+                keyExtractor={(item) => item.id}
+                style={{ flex: 1 }}
+                renderItem={({ item }) => (
+                  <View style={styles.commentRow}>
+                    <Image source={{ uri: item.userAvatar }} style={styles.commentAvatar} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.commentAuthor}>{item.userName}</Text>
+                      <Text style={styles.commentBody}>{item.content}</Text>
+                    </View>
+                    <Ionicons name="heart-outline" size={16} color="#888888" />
                   </View>
-                  <TouchableOpacity style={styles.heartButton}>
-                    <Ionicons name="heart-outline" size={18} color="#888888" />
-                  </TouchableOpacity>
-                </View>
-              )}
-            />
+                )}
+                ListEmptyComponent={
+                  <Text style={styles.emptyCommentText}>Chưa có bình luận nào. Hãy là người đầu tiên!</Text>
+                }
+              />
+            )}
 
-            {/* Ô nhập bình luận */}
-            <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+            {/* Input thêm bình luận */}
+            <View style={styles.commentInputRow}>
               <TextInput
                 style={styles.commentInput}
                 placeholder="Leave comment..."
-                placeholderTextColor="#888"
+                placeholderTextColor="#999999"
                 value={commentText}
                 onChangeText={setCommentText}
               />
-              <TouchableOpacity
-                onPress={handleAddComment}
-                style={styles.sendButton}
-              >
-                <Ionicons name="send" size={18} color="#FF2442" />
+              <TouchableOpacity onPress={handleAddComment} style={styles.sendBtn}>
+                <Ionicons name="send" size={20} color="#FF2442" />
               </TouchableOpacity>
             </View>
           </View>
@@ -303,7 +320,7 @@ export const ReelDetailScreen: React.FC = () => {
       </Modal>
 
       <LoginRequiredModal />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -312,101 +329,89 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#000000",
   },
-  closeButtonContainer: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    zIndex: 100,
+  centerLoading: {
+    flex: 1,
+    backgroundColor: "#000000",
+    justifyContent: "center",
+    alignItems: "center",
   },
   closeButton: {
-    padding: 16,
+    position: "absolute",
+    top: 45,
+    left: 16,
+    zIndex: 99,
   },
-  // Styles cho Modal Comments
-  modalOverlay: {
+  videoContainer: {
+    width,
+    height,
+    position: "relative",
+  },
+  modalBackdrop: {
     flex: 1,
-    justifyContent: "flex-end",
     backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
-  modalDismissArea: {
-    flex: 1,
-  },
-  commentSheetContainer: {
+  commentSheet: {
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: height * 0.65,
-    paddingTop: 12,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: "60%",
+    padding: 16,
   },
   commentHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    marginBottom: 12,
+    paddingBottom: 8,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#EFEFEF",
+    borderBottomColor: "#EEEEEE",
   },
   commentTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
-    color: "#000000",
   },
-  commentItem: {
+  commentRow: {
     flexDirection: "row",
-    marginTop: 16,
-    alignItems: "flex-start",
+    alignItems: "center",
+    marginBottom: 14,
   },
   commentAvatar: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    marginRight: 12,
-    backgroundColor: "#eee",
   },
-  commentContentWrapper: {
-    flex: 1,
-    marginRight: 12,
-  },
-  commentUsername: {
+  commentAuthor: {
+    fontWeight: "bold",
     fontSize: 13,
-    fontWeight: "600",
-    color: "#555555",
-    marginBottom: 2,
   },
-  commentText: {
-    fontSize: 14,
-    color: "#000000",
-    marginBottom: 4,
+  commentBody: {
+    fontSize: 13,
+    color: "#333333",
+    marginTop: 2,
   },
-  commentTime: {
-    fontSize: 11,
+  emptyCommentText: {
+    textAlign: "center",
     color: "#888888",
+    marginTop: 40,
   },
-  heartButton: {
-    padding: 4,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  commentInputContainer: {
+  commentInputRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     borderTopWidth: 0.5,
-    borderTopColor: "#EFEFEF",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: "#EEEEEE",
+    paddingTop: 10,
   },
   commentInput: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#F2F2F2",
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 40,
     fontSize: 14,
-    color: "#000000",
   },
-  sendButton: {
-    marginLeft: 12,
-    padding: 8,
+  sendBtn: {
+    marginLeft: 10,
+    padding: 6,
   },
 });

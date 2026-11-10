@@ -22,9 +22,15 @@ export const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="MainTabs"
         screenOptions={{ headerShown: false }}
       >
+        {/* Main Tabs (S01 Home, S02 Search...) */}
+        <Stack.Screen
+          name="MainTabs"
+          component={BottomTabNavigator}
+        />
+
         {/* Login (S12) */}
         <Stack.Screen name="Login">
           {({ navigation }) => (
@@ -60,12 +66,6 @@ export const AppNavigator = () => {
             />
           )}
         </Stack.Screen>
-
-        {/* Main Tabs */}
-        <Stack.Screen
-          name="MainTabs"
-          component={BottomTabNavigator}
-        />
 
         <Stack.Screen
           name="ReelDetail"
