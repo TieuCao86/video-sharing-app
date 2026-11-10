@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StoryList } from '../../components/cards/StoryList';
 import { BrowseTopics } from '../../components/cards/BrowseTopics';
 import { VideoCard } from '../../components/cards/VideoCard';
@@ -164,7 +165,7 @@ export const HomeScreen: React.FC = () => {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>

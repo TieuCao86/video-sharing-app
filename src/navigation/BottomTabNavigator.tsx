@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet, Text, SafeAreaView } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeScreen } from '../screens/home/HomeScreen';
 import { SearchScreen } from '../screens/search/SearchScreen';
@@ -30,13 +31,22 @@ const FriendsScreen = () => <DummyScreen name="Friends" />;
 
 export const BottomTabNavigator = () => {
   const { isLoggedIn, showLoginModal } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 16);
 
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: {
+            backgroundColor: '#000000',
+            borderTopWidth: 0.5,
+            borderTopColor: '#222222',
+            height: 52 + bottomInset,
+            paddingBottom: bottomInset,
+            paddingTop: 6,
+          },
           tabBarActiveTintColor: '#FF2442',
           tabBarInactiveTintColor: '#888888',
           tabBarLabelStyle: styles.tabBarLabel,
@@ -159,14 +169,6 @@ export const BottomTabNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
-    backgroundColor: '#000000',
-    borderTopWidth: 0.5,
-    borderTopColor: '#222222',
-    height: 60,
-    paddingBottom: 8,
-    paddingTop: 8,
-  },
   tabBarLabel: {
     fontSize: 11,
     fontWeight: '500',
@@ -178,6 +180,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
 });

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -43,6 +44,8 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const insets = useSafeAreaInsets();
+  const bottomOffset = Math.max(insets.bottom, 16);
 
   // Create video player
   const player = useVideoPlayer(video.url, player => {
@@ -131,7 +134,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
       <View style={styles.overlay} pointerEvents="none" />
 
       {/* Right Actions */}
-      <View style={styles.rightActionsContainer}>
+      <View style={[styles.rightActionsContainer, { bottom: 80 + bottomOffset }]}>
         <View style={styles.avatarWrapper}>
           <Image
             source={{ uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" }}
@@ -169,7 +172,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
       </View>
 
       {/* Bottom Info */}
-      <View style={styles.bottomInfoContainer}>
+      <View style={[styles.bottomInfoContainer, { bottom: 16 + bottomOffset }]}>
         <Text style={styles.creatorName}>{video.creator}</Text>
         <Text style={styles.caption}>{video.caption}</Text>
 
