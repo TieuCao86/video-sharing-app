@@ -56,10 +56,23 @@ export const UserProfileScreen: React.FC = () => {
   const [dismissedUserIds, setDismissedUserIds] = useState<Set<string>>(new Set());
   const [followedSuggestionIds, setFollowedSuggestionIds] = useState<Set<string>>(new Set());
 
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = useCallback(async (isRefresh = false) => {
     if (!userId) return;
+
     try {
-      const [userProfile, userVids, userLikes, suggestions] = await Promise.all([
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      // Fetch lại toàn bộ dữ liệu từ database
+      const [
+        userProfile,
+        userVids,
+        userLikes,
+        suggestions,
+      ] = await Promise.all([
         getProfileById(userId, authUser?.id),
         getUserVideos(userId),
         getLikedVideos(userId),
@@ -70,9 +83,16 @@ export const UserProfileScreen: React.FC = () => {
         setProfile(userProfile);
         setIsFollowing(!!userProfile.isFollowing);
       }
+
       setVideos(userVids);
       setLikedVideos(userLikes);
-      setSuggestedUsers(suggestions.filter((s) => s.id !== userId && s.id !== authUser?.id));
+
+      setSuggestedUsers(
+        suggestions.filter(
+          (s) => s.id !== userId && s.id !== authUser?.id
+        )
+      );
+
     } catch (err) {
       console.error('Error fetching user profile:', err);
     } finally {
@@ -85,10 +105,9 @@ export const UserProfileScreen: React.FC = () => {
     fetchUserData();
   }, [fetchUserData]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchUserData();
-  };
+  const onRefresh = useCallback(() => {
+    fetchUserData(true);
+  }, [fetchUserData]);
 
   const handleToggleFollow = () => {
     checkAuth(async () => {
