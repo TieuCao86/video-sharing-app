@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../constants/colors';
 import { CustomButton } from '../../components/buttons/CustomButton';
+import { supabase } from '../../utils/supabase';
 
 export const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -33,7 +34,7 @@ export const ChangePasswordScreen: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     let valid = true;
     setCurrentError(null);
     setNewError(null);
@@ -51,6 +52,9 @@ export const ChangePasswordScreen: React.FC = () => {
     } else if (newPassword.length < 6) {
       setNewError('New password must be at least 6 characters.');
       valid = false;
+    } else if (newPassword === currentPassword) {
+      setNewError('New password must be different from the current password.');
+      valid = false;
     }
 
     if (!confirmPassword) {
@@ -64,8 +68,38 @@ export const ChangePasswordScreen: React.FC = () => {
     if (!valid) return;
 
     setIsUpdating(true);
-    setTimeout(() => {
-      setIsUpdating(false);
+    try {
+      // 1. Lấy email của tài khoản đang đăng nhập
+      const { data: sessionData } = await supabase.auth.getSession();
+      const email = sessionData.session?.user?.email;
+
+      if (!email) {
+        setCurrentError('Bạn cần đăng nhập để đổi mật khẩu.');
+        return;
+      }
+
+      // 2. Xác thực mật khẩu hiện tại
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        setCurrentError('Current password is incorrect.');
+        return;
+      }
+
+      // 3. Cập nhật mật khẩu mới
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        console.error('[changePassword]', updateError);
+        setNewError(updateError.message || 'Không thể đổi mật khẩu. Vui lòng thử lại.');
+        return;
+      }
+
       setSuccessMessage('Password updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
@@ -74,7 +108,12 @@ export const ChangePasswordScreen: React.FC = () => {
       Alert.alert('Success', 'Password updated successfully!', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
-    }, 600);
+    } catch (err: any) {
+      console.error('[changePassword] exception:', err);
+      setNewError(err?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
