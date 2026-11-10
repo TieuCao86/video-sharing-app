@@ -10,7 +10,7 @@ export interface TabItem {
 }
 
 interface ProfileTabBarProps {
-  tabs: [TabItem, TabItem];
+  tabs: TabItem[];
   activeTab: string;
   onSelectTab: (key: string) => void;
 }
