@@ -45,6 +45,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       followers: profile?.followers_count || 0,
       likes: profile?.likes_count || 0,
       videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
+      auth_id: profile?.auth_id || data.user.id,
     };
 
     // Cập nhật vào global store
@@ -237,7 +238,7 @@ export async function checkSession(): Promise<UserProfile | null> {
       const { data: profile } = await supabase
         .from('users')
         .select('*')
-        .eq('id', data.session.user.id)
+        .eq('auth_id', data.session.user.id)
         .maybeSingle();
 
       const userProfile: UserProfile = {
@@ -249,6 +250,7 @@ export async function checkSession(): Promise<UserProfile | null> {
         followers: profile?.followers_count || 0,
         likes: profile?.likes_count || 0,
         videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
+        auth_id: profile.auth_id
       };
 
       authStore.login(userProfile);

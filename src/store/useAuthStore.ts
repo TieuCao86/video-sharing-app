@@ -9,6 +9,7 @@ export interface UserProfile {
   followers: number;
   likes: number;
   videos: string;
+  auth_id: string;
 }
 
 export const DEFAULT_USER: UserProfile = {
@@ -20,6 +21,7 @@ export const DEFAULT_USER: UserProfile = {
   followers: 53,
   likes: 23,
   videos: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=500',
+  auth_id: ""
 };
 
 interface AuthState {

@@ -17,7 +17,8 @@ import { colors } from '../../constants/colors';
 import { Avatar } from '../../components/common/Avatar';
 import { CustomButton } from '../../components/buttons/CustomButton';
 import { useAuthStore, DEFAULT_USER } from '../../store/useAuthStore';
-import { updateProfile as updateProfileService } from '../../services/userService';
+import { updateProfile as updateProfileService, uploadAvatar } from '../../services/userService';
+import { supabase } from '../../utils/supabase';
 
 const MAX_BIO_LENGTH = 150;
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -30,6 +31,8 @@ export const EditProfileScreen: React.FC = () => {
   const currentUser = route.params?.user || user || DEFAULT_USER;
 
   const [avatarUri, setAvatarUri] = useState<string>(currentUser.avatar || '');
+  const [avatarBase64, setAvatarBase64] = useState<string | null>(null);
+  const [isNewAvatarSelected, setIsNewAvatarSelected] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState<string>(currentUser.name || '');
   const [bio, setBio] = useState<string>(currentUser.bio || '');
 
@@ -51,7 +54,8 @@ export const EditProfileScreen: React.FC = () => {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.9,
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -78,6 +82,8 @@ export const EditProfileScreen: React.FC = () => {
         }
 
         setAvatarUri(asset.uri);
+        setAvatarBase64(asset.base64 || null);
+        setIsNewAvatarSelected(true);
       }
     } catch (err: any) {
       setAvatarError(err?.message || 'Failed to select image.');
@@ -85,6 +91,7 @@ export const EditProfileScreen: React.FC = () => {
   };
 
   const handleSave = async () => {
+
     let valid = true;
     const trimmedName = displayName.trim();
 
@@ -106,24 +113,46 @@ export const EditProfileScreen: React.FC = () => {
 
     setIsSaving(true);
     try {
-      if (user?.id) {
-        await updateProfileService(user.id, {
+      // Xác định chính xác userId (ưu tiên session supabase nếu user trong store chưa load)
+      let targetUserId: string | undefined = user?.id;
+      if (!targetUserId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        targetUserId = sessionData.session?.user?.id;
+      }
+      if (!targetUserId) {
+        targetUserId = currentUser.id;
+      }
+      console.log('store user:', user?.id);
+      console.log('route user:', route.params?.user?.id);
+      console.log('DEFAULT_USER id:', DEFAULT_USER.id);
+      console.log('targetUserId:', targetUserId);
+      let finalAvatarUrl = avatarUri;
+
+      // Nếu người dùng chọn ảnh mới -> thực hiện upload / chuyển đổi
+      if (isNewAvatarSelected && targetUserId) {
+        finalAvatarUrl = await uploadAvatar(targetUserId, avatarUri, avatarBase64);
+        const { error } = await supabase.from('users').update({ avatar_url: finalAvatarUrl }).eq('id', targetUserId);
+        if (error) console.error('[update profile]', error);
+      }
+
+      if (targetUserId) {
+        await updateProfileService(targetUserId, {
           display_name: trimmedName,
           bio: bio.trim(),
-          avatar_url: avatarUri,
+          avatar_url: finalAvatarUrl,
         });
       }
       updateProfile({
         name: trimmedName,
         bio: bio.trim(),
-        avatar: avatarUri,
+        avatar: finalAvatarUrl,
       });
 
       if (route.params?.onSave) {
         route.params.onSave({
           name: trimmedName,
           bio: bio.trim(),
-          avatar: avatarUri,
+          avatar: finalAvatarUrl,
         });
       }
 
