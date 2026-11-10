@@ -86,6 +86,8 @@ export const ReelDetailScreen: React.FC = () => {
   const { height: screenHeight } = useWindowDimensions();
   
   const initialVideoId = route.params?.videoId;
+  // Lấy db id của user đang đăng nhập (dùng để check isLiked & tạo notification)
+  const currentDbUserId = user?.id ?? null;
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export const ReelDetailScreen: React.FC = () => {
   useEffect(() => {
     async function loadVideos() {
       try {
-        const fetchedVideos = await getTrendingVideos(20);
+        const fetchedVideos = await getTrendingVideos(20, currentDbUserId ?? undefined);
         setVideos(fetchedVideos);
 
         // Tìm vị trí của video được nhấn từ danh sách
@@ -124,7 +126,7 @@ export const ReelDetailScreen: React.FC = () => {
       }
     }
     loadVideos();
-  }, [initialVideoId]);
+  }, [initialVideoId, currentDbUserId]);
 
   const currentVideo = videos[currentIndex];
 

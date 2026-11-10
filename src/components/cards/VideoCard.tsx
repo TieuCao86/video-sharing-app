@@ -42,8 +42,6 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   type = 'trending',
   showHeartIcon = false,
 }) => {
-  const [loading, setLoading] = useState(true);
-
   const thumbnailUri = isVideoItem(item)
     ? item.coverUrl
     : item.coverUrl || item.thumbnail || '';
@@ -53,6 +51,11 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     : item.views || PLACEHOLDER_VIEW_COUNT;
   const timeAgoText = !isVideoItem(item) ? item.timeAgo : undefined;
 
+  // Chỉ show skeleton khi có URI hợp lệ (tránh spinner quay mãi khi URI rỗng)
+  const hasUri = !!thumbnailUri;
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const showSkeleton = hasUri && !imageLoaded;
+
   if (type === 'profile') {
     return (
       <TouchableOpacity
@@ -60,17 +63,25 @@ export const VideoCard: React.FC<VideoCardProps> = ({
         onPress={onPress}
         style={styles.profileCard}
       >
-        {loading && (
+        {/* Skeleton chỉ hiển thị khi đang tải ảnh thật */}
+        {showSkeleton && (
           <View style={styles.skeleton}>
             <ActivityIndicator size="small" color="#888" />
           </View>
         )}
-        <Image
-          source={{ uri: thumbnailUri }}
-          style={styles.profileThumbnail}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-        />
+        {hasUri ? (
+          <Image
+            source={{ uri: thumbnailUri }}
+            style={styles.profileThumbnail}
+            onLoad={() => setImageLoaded(true)}
+            onError={() => setImageLoaded(true)} // ẩn spinner kể cả khi lỗi
+          />
+        ) : (
+          // Placeholder khi không có thumbnail
+          <View style={styles.noThumbnail}>
+            <Ionicons name="videocam-outline" size={24} color="#BBBBBB" />
+          </View>
+        )}
         <View style={styles.profileBottomOverlay}>
           <View style={styles.viewsContainer}>
             <Ionicons name="play" size={12} color="#FFFFFF" />
@@ -140,6 +151,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+  },
+  noThumbnail: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   profileThumbnail: {
     width: '100%',

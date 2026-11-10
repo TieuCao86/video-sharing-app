@@ -57,7 +57,9 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   onToggleFollowProfile,
 }) => {
   const navigation = useNavigation<any>();
-  const { checkAuth } = useAuthStore();
+  const { user: authUser, checkAuth } = useAuthStore();
+  // Ưu tiên auth_id từ store để truyền cho toggleFollowUser / getProfileById
+  const currentAuthId = authUser?.auth_id || undefined;
   const [activeTab, setActiveTab] = useState<'videos' | 'liked'>('videos');
   const [profile, setProfile] = useState<UserProfileItem | null>(null);
   const [isFollowing, setIsFollowing] = useState<boolean>(initialIsFollowing);
@@ -72,7 +74,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const fetchUserData = useCallback(async () => {
     try {
       const [userProfile, userVids, userLikes] = await Promise.all([
-        getProfileById(initialUser.id, currentUserId),
+        getProfileById(initialUser.id, currentAuthId),
         getUserVideos(initialUser.id),
         getLikedVideos(initialUser.id),
       ]);
@@ -89,7 +91,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [initialUser.id, currentUserId]);
+  }, [initialUser.id, currentAuthId]);
 
   useEffect(() => {
     fetchUserData();
@@ -103,7 +105,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const handleToggleFollow = () => {
     checkAuth(async () => {
       try {
-        const nextState = await toggleFollowUser(currentUserId, initialUser.id);
+        const nextState = await toggleFollowUser(currentAuthId!, initialUser.id);
         setIsFollowing(nextState);
         if (profile) {
           setProfile({
@@ -129,7 +131,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
   const handleToggleFollowSuggestion = (id: string) => {
     checkAuth(async () => {
       try {
-        const nextState = await toggleFollowUser(currentUserId, id);
+        const nextState = await toggleFollowUser(currentAuthId!, id);
         setFollowedSuggestionIds((prev) => {
           const updated = new Set(prev);
           if (nextState) updated.add(id);

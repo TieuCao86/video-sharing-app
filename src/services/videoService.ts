@@ -1,4 +1,12 @@
 import { supabase } from '../utils/supabase';
+import { createLikeNotification } from './notificationService';
+import { resolveDbUserId } from './userService';
+
+/** Kiểm tra chuỗi có đúng định dạng UUID không */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUUID(val?: string | null): val is string {
+  return !!val && UUID_REGEX.test(val);
+}
 
 export interface VideoDetailItem {
   id: string;
@@ -69,8 +77,10 @@ function mapVideoItem(v: any, isLiked = false): VideoDetailItem {
 
 /**
  * Lấy danh sách Video Trending (S01 Trang chủ & S19 View more)
+ * @param limit        - số lượng video tối đa
+ * @param currentUserId - users.id (db id) của người đang xem để check isLiked
  */
-export async function getTrendingVideos(limit = 10): Promise<VideoDetailItem[]> {
+export async function getTrendingVideos(limit = 10, currentUserId?: string): Promise<VideoDetailItem[]> {
   const { data, error } = await supabase
     .from('videos')
     .select(`
@@ -87,7 +97,21 @@ export async function getTrendingVideos(limit = 10): Promise<VideoDetailItem[]> 
     throw error;
   }
 
-  return (data || []).map((v: any) => mapVideoItem(v));
+  const videos = data || [];
+
+  // Nếu có user đang đăng nhập → batch check isLiked cho toàn bộ video
+  let likedSet = new Set<string>();
+  if (currentUserId && videos.length > 0) {
+    const videoIds = videos.map((v: any) => v.id);
+    const { data: likedRows } = await supabase
+      .from('likes')
+      .select('video_id')
+      .eq('user_id', currentUserId)
+      .in('video_id', videoIds);
+    likedSet = new Set((likedRows || []).map((r: any) => r.video_id));
+  }
+
+  return videos.map((v: any) => mapVideoItem(v, likedSet.has(v.id)));
 }
 
 /**
@@ -166,29 +190,54 @@ export async function incrementVideoView(videoId: string): Promise<void> {
 
 /**
  * Thả tim / Bỏ tim video (UC16)
+ * @param userId  - users.id (db id) hoặc auth_id của người thả tim — sẽ được resolve tự động
+ * @param videoId - id của video
+ * @returns true = đang liked, false = đã bỏ liked
  */
 export async function toggleLikeVideo(userId: string, videoId: string): Promise<boolean> {
+  // Resolve sang users.id đảm bảo đúng FK của bảng likes
+  const dbUserId = (await resolveDbUserId(userId)) ?? userId;
+
   const { data } = await supabase
     .from('likes')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', dbUserId)
     .eq('video_id', videoId)
     .maybeSingle();
 
   if (data) {
+    // Đã like → bỏ like
     const { error } = await supabase
       .from('likes')
       .delete()
-      .eq('user_id', userId)
+      .eq('user_id', dbUserId)
       .eq('video_id', videoId);
     if (error) throw error;
-    return false; // Đã bỏ thích
+    return false;
   } else {
+    // Chưa like → thêm like
     const { error } = await supabase
       .from('likes')
-      .insert({ user_id: userId, video_id: videoId });
+      .insert({ user_id: dbUserId, video_id: videoId });
     if (error) throw error;
-    return true; // Đã thích
+
+    // Lấy creator của video và tạo notification (fire-and-forget)
+    supabase
+      .from('videos')
+      .select('creator_id, users:creator_id(id)')
+      .eq('id', videoId)
+      .maybeSingle()
+      .then(async ({ data: videoData }) => {
+        if (!videoData) return;
+        const creatorDbId: string | undefined =
+          (videoData as any).users?.id ||
+          (await resolveDbUserId(videoData.creator_id));
+        if (creatorDbId && creatorDbId !== dbUserId) {
+          createLikeNotification(dbUserId, creatorDbId, videoId).catch(() => {});
+        }
+      });
+
+    return true;
   }
 }
 
@@ -196,6 +245,9 @@ export async function toggleLikeVideo(userId: string, videoId: string): Promise<
  * Lấy danh sách video do chính User tạo (Tab 'My Videos' trên S09)
  */
 export async function getUserVideos(creatorId: string): Promise<VideoDetailItem[]> {
+  // Guard: creatorId phải là UUID hợp lệ
+  if (!isUUID(creatorId)) return [];
+
   const { data, error } = await supabase
     .from('videos')
     .select(`
@@ -218,8 +270,13 @@ export async function getUserVideos(creatorId: string): Promise<VideoDetailItem[
 
 /**
  * Lấy danh sách video mà User đã Thả tim (Tab 'Liked' trên S09)
+ * @param userId - users.id (db id, UUID) của user
  */
 export async function getLikedVideos(userId: string): Promise<VideoDetailItem[]> {
+  // Guard: userId phải là UUID hợp lệ; resolve nếu là auth_id
+  if (!isUUID(userId)) return [];
+  const dbUserId = (await resolveDbUserId(userId)) ?? userId;
+
   const { data, error } = await supabase
     .from('likes')
     .select(`
@@ -230,7 +287,7 @@ export async function getLikedVideos(userId: string): Promise<VideoDetailItem[]>
         audio_tracks:audio_track_id (id, title, artist, audio_url)
       )
     `)
-    .eq('user_id', userId)
+    .eq('user_id', dbUserId)
     .order('created_at', { ascending: false });
 
   if (error) {

@@ -114,7 +114,7 @@ export const EditProfileScreen: React.FC = () => {
     setIsSaving(true);
     try {
       // Xác định chính xác userId (ưu tiên session supabase nếu user trong store chưa load)
-      let targetUserId: string | undefined = user?.id;
+      let targetUserId: string | undefined = user?.auth_id;
       if (!targetUserId) {
         const { data: sessionData } = await supabase.auth.getSession();
         targetUserId = sessionData.session?.user?.id;
