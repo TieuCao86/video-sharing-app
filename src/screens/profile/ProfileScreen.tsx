@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  SafeAreaView,
   Text,
   ActivityIndicator,
   StyleSheet,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { ApiUser } from '../../types/user.type';
 import { fetchUsers } from '../../api/userApi';
@@ -172,7 +172,7 @@ export const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {content}
       <LoginRequiredModal />
     </SafeAreaView>

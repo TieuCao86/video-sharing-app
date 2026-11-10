@@ -46,11 +46,14 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = (props) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          testID="profile-settings-button"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           onPress={props.onOptions}
           activeOpacity={0.7}
         >
-          <Ionicons name="menu-outline" size={24} color={colors.text} />
+          <Ionicons name="menu-outline" size={28} color={colors.text} />
         </TouchableOpacity>
       </View>
     );

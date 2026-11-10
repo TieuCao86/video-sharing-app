@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  SafeAreaView, 
   ScrollView, 
   View, 
   Text, 
@@ -12,6 +11,7 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -448,7 +448,7 @@ export const SearchScreen: React.FC = () => {
   const showInitialDiscovery = debouncedSearchText.trim() === '';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* 1. Search Header Bar */}
       <View style={styles.searchHeader}>
         <View style={styles.searchBar}>

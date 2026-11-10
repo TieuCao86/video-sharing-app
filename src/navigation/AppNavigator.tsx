@@ -13,6 +13,7 @@ import { EditProfileScreen } from '../screens/profile/EditProfileScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
 import { DraftsScreen } from '../screens/drafts/DraftsScreen';
+import { DraftViewerScreen } from '../screens/drafts/DraftViewerScreen';
 import { authStore } from '../store/useAuthStore';
 
 const Stack = createNativeStackNavigator();
@@ -167,6 +168,16 @@ export const AppNavigator = () => {
           options={{
             presentation: 'card',
             animation: 'slide_from_right',
+          }}
+        />
+
+        {/* Draft Viewer (TikTok-style full screen) */}
+        <Stack.Screen
+          name="DraftViewer"
+          component={DraftViewerScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
           }}
         />
       </Stack.Navigator>
