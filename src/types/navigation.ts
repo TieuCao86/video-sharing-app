@@ -26,6 +26,9 @@ export type RootStackParamList = {
   S17: undefined;
   Drafts: undefined;
   S21: undefined;
+  DraftViewer?: {
+    draftId?: string;
+  };
 };
 
 export type BottomTabParamList = {

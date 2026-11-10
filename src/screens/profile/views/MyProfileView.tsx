@@ -13,6 +13,7 @@ import {
 import { VideoThumbnailGrid } from '../../../components/profile/VideoThumbnailGrid';
 import { PLACEHOLDER_VIEW_COUNT } from '../../../constants/profile';
 import { MOCK_VIDEOS_ARRAY } from '../../reel/ReelDetailScreen';
+import { useDraftsStore } from '../../../store/useDraftsStore';
 
 interface MyProfileViewProps {
   user: ApiUser;
@@ -38,11 +39,19 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
 }) => {
   const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState<'my-videos' | 'liked'>('my-videos');
+  const { publishedVideos } = useDraftsStore();
 
-  // Fill grid with owner's video first, then other users' videos
+  // Fill grid with published drafts first, then owner's video, then other users' videos
   const videoItems = useMemo(() => {
+    const publishedItems = publishedVideos.map((pv) => ({
+      id: pv.id,
+      thumbnail: pv.thumbnail,
+      views: pv.views || PLACEHOLDER_VIEW_COUNT,
+    }));
+
     const otherUsers = allUsers.filter((u) => u.id !== user.id);
     const combined = [
+      ...publishedItems,
       { id: `owner-${user.id}`, thumbnail: user.videos, views: PLACEHOLDER_VIEW_COUNT },
       ...otherUsers.map((u) => ({
         id: `user-${u.id}`,
@@ -60,7 +69,7 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     }
 
     return combined;
-  }, [user, allUsers]);
+  }, [publishedVideos, user, allUsers]);
 
   // Liked tab uses a different slice of the video list
   const displayedVideos = useMemo(() => {
