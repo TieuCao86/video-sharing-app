@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  SafeAreaView
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -84,7 +85,7 @@ export const ReelDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
   const { checkAuth, user } = useAuthStore();
-  
+
   const initialVideoId = route.params?.videoId;
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
