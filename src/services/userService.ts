@@ -16,14 +16,21 @@ export interface UserProfileItem {
  * Lấy hồ sơ tài khoản theo userId (kèm kiểm tra xem người dùng hiện tại có đang follow hay không)
  */
 export async function getProfileById(userId: string, currentUserId?: string): Promise<UserProfileItem | null> {
+  if (!userId) return null;
+
   const { data, error } = await supabase
     .from('users')
     .select('*')
     .eq('id', userId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     console.error('Error fetching user profile:', error);
+    return null;
+  }
+
+  if (!data) {
+    // Không tìm thấy user trong DB (VD: guest hoặc mock id cũ) -> return null im lặng, không log lỗi đỏ
     return null;
   }
 
@@ -40,12 +47,12 @@ export async function getProfileById(userId: string, currentUserId?: string): Pr
   return {
     id: data.id,
     name: data.display_name,
-    avatar: data.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+    avatar: data.avatar_url || 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Image/avt%20df.png',
     bio: data.bio || '',
-    following: data.following_count,
-    followers: data.followers_count,
-    likes: data.likes_count,
-    videosCount: data.videos_count,
+    following: data.following_count || 0,
+    followers: data.followers_count || 0,
+    likes: data.likes_count || 0,
+    videosCount: data.videos_count || 0,
     isFollowing,
   };
 }
@@ -65,15 +72,27 @@ export async function searchProfiles(query: string, currentUserId?: string): Pro
     throw error;
   }
 
+  let followedSet = new Set<string>();
+  if (currentUserId) {
+    const { data: followRows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId);
+    if (followRows) {
+      followedSet = new Set(followRows.map((f: any) => f.following_id));
+    }
+  }
+
   return (data || []).map((p: any) => ({
     id: p.id,
     name: p.display_name,
-    avatar: p.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+    avatar: p.avatar_url || 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Image/avt%20df.png',
     bio: p.bio || '',
-    following: p.following_count,
-    followers: p.followers_count,
-    likes: p.likes_count,
-    videosCount: p.videos_count,
+    following: p.following_count || 0,
+    followers: p.followers_count || 0,
+    likes: p.likes_count || 0,
+    videosCount: p.videos_count || 0,
+    isFollowing: followedSet.has(p.id),
   }));
 }
 
@@ -124,6 +143,68 @@ export async function toggleFollowUser(followerId: string, followingId: string):
       .insert({ follower_id: followerId, following_id: followingId });
     if (error) throw error;
     return true; // Hiện tại là đang follow
+  }
+}
+
+/**
+ * Lấy danh sách những người theo dõi mình hoặc mình theo dõi
+ */
+export async function getFollowList(
+  userId: string,
+  type: 'followers' | 'following',
+  currentUserId?: string
+): Promise<UserProfileItem[]> {
+  try {
+    if (type === 'followers') {
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`
+          created_at,
+          users:follower_id (*)
+        `)
+        .eq('following_id', userId);
+
+      if (error) throw error;
+
+      return (data || [])
+        .filter((item: any) => item.users)
+        .map((item: any) => ({
+          id: item.users.id,
+          name: item.users.display_name,
+          avatar: item.users.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+          bio: item.users.bio || '',
+          following: item.users.following_count || 0,
+          followers: item.users.followers_count || 0,
+          likes: item.users.likes_count || 0,
+          videosCount: item.users.videos_count || 0,
+        }));
+    } else {
+      const { data, error } = await supabase
+        .from('follows')
+        .select(`
+          created_at,
+          users:following_id (*)
+        `)
+        .eq('follower_id', userId);
+
+      if (error) throw error;
+
+      return (data || [])
+        .filter((item: any) => item.users)
+        .map((item: any) => ({
+          id: item.users.id,
+          name: item.users.display_name,
+          avatar: item.users.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+          bio: item.users.bio || '',
+          following: item.users.following_count || 0,
+          followers: item.users.followers_count || 0,
+          likes: item.users.likes_count || 0,
+          videosCount: item.users.videos_count || 0,
+        }));
+    }
+  } catch (err) {
+    console.error('Error fetching follow list:', err);
+    return [];
   }
 }
 

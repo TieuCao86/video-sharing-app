@@ -12,7 +12,7 @@ export interface UserProfile {
 }
 
 export const DEFAULT_USER: UserProfile = {
-  id: '1',
+  id: 'c0000001-0000-4000-8000-000000000001',
   name: 'Pat Reichert',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
   bio: 'Digital creator and video explorer ❤️❤️❤️',

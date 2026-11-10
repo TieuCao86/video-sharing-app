@@ -1,6 +1,9 @@
 import { supabase } from '../utils/supabase';
 import { authStore, UserProfile } from '../store/useAuthStore';
 
+export const DEFAULT_AVATAR_URL =
+  'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Image/avt%20df.png';
+
 export interface AuthResponse {
   success: boolean;
   message?: string;
@@ -36,12 +39,12 @@ export async function loginWithEmail(email: string, password: string): Promise<A
     const loggedInUser: UserProfile = {
       id: data.user.id,
       name: profile?.display_name || data.user.user_metadata?.name || 'User',
-      avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
       bio: profile?.bio || '',
       following: profile?.following_count || 0,
       followers: profile?.followers_count || 0,
       likes: profile?.likes_count || 0,
-      videos: profile?.avatar_url || '',
+      videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
     };
 
     // Cập nhật vào global store
@@ -90,12 +93,12 @@ export async function signUpWithEmail(
     }
 
     if (data.user) {
-      // Lưu thông tin người dùng vào bảng users
+      // Lưu thông tin người dùng vào bảng users với avatar mặc định
       await supabase.from('users').upsert({
         id: data.user.id,
         email: trimmedEmail,
         display_name: trimmedName,
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+        avatar_url: DEFAULT_AVATAR_URL,
         following_count: 0,
         followers_count: 0,
         likes_count: 0,
@@ -163,7 +166,7 @@ export async function verifyOtpCode(
       id: data.user.id,
       email: trimmedEmail,
       display_name: displayName || data.user.user_metadata?.name || 'User',
-      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      avatar_url: DEFAULT_AVATAR_URL,
       following_count: 0,
       followers_count: 0,
       likes_count: 0,
@@ -240,12 +243,12 @@ export async function checkSession(): Promise<UserProfile | null> {
       const userProfile: UserProfile = {
         id: data.session.user.id,
         name: profile?.display_name || data.session.user.user_metadata?.name || 'User',
-        avatar: profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+        avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
         bio: profile?.bio || '',
         following: profile?.following_count || 0,
         followers: profile?.followers_count || 0,
         likes: profile?.likes_count || 0,
-        videos: profile?.avatar_url || '',
+        videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
       };
 
       authStore.login(userProfile);

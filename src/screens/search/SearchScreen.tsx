@@ -18,6 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
 // Services Supabase
+import { supabase } from '../../utils/supabase';
 import {
   searchVideos,
   getTrendingVideos,
@@ -53,7 +54,25 @@ const defaultTrendingTags = [
 export const SearchScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { user, checkAuth } = useAuthStore();
+  const { user, isLoggedIn, checkAuth } = useAuthStore();
+  const [currentSessionUserId, setCurrentSessionUserId] = useState<string | null>(null);
+
+  // Lấy userId thực tế từ Supabase auth session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.user?.id) {
+        setCurrentSessionUserId(data.session.user.id);
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentSessionUserId(session?.user?.id || null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Search input state
   const [searchText, setSearchText] = useState(route.params?.query || '');
@@ -319,11 +338,39 @@ export const SearchScreen: React.FC = () => {
     );
   };
 
+  // Xử lý khi nhấn vào một tài khoản
+  const handleAccountPress = (account: UserProfileItem) => {
+    const myId = (isLoggedIn && user?.id) ? user.id : currentSessionUserId;
+    const isSameId = Boolean(myId && account.id && String(myId).toLowerCase() === String(account.id).toLowerCase());
+    const isSameName = Boolean(user?.name && account.name && user.name.trim().toLowerCase() === account.name.trim().toLowerCase());
+    const isMe = isSameId || isSameName;
+
+    if (isMe) {
+      // Nếu là tài khoản của mình -> Chuyển sang Tab My Profile
+      navigation.navigate('MainTabs', { screen: 'ProfileTab' });
+    } else {
+      // Nếu là tài khoản người khác -> Mở trang UserProfile
+      navigation.navigate('UserProfile', { userId: account.id });
+    }
+  };
+
   // Render Account Item
   const renderAccountItem = (account: UserProfileItem) => {
-    const isFollowing = followedIds.has(account.id);
+    const isFollowing = followedIds.has(account.id) || !!account.isFollowing;
+    
+    // Kiểm tra xem có phải tài khoản của chính mình hay không
+    const myId = (isLoggedIn && user?.id) ? user.id : currentSessionUserId;
+    const isSameId = Boolean(myId && account.id && String(myId).toLowerCase() === String(account.id).toLowerCase());
+    const isSameName = Boolean(user?.name && account.name && user.name.trim().toLowerCase() === account.name.trim().toLowerCase());
+    const isMe = isSameId || isSameName;
+
     return (
-      <View key={account.id} style={styles.accountRow}>
+      <TouchableOpacity
+        key={account.id}
+        style={styles.accountRow}
+        activeOpacity={0.7}
+        onPress={() => handleAccountPress(account)}
+      >
         <Image source={{ uri: account.avatar }} style={styles.accountAvatar} />
 
         <View style={styles.accountInfo}>
@@ -337,16 +384,21 @@ export const SearchScreen: React.FC = () => {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.followBtn, isFollowing && styles.followingBtn]}
-          onPress={() => handleToggleFollow(account.id)}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-            {isFollowing ? 'Following' : 'Follow'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {!isMe && (
+          <TouchableOpacity
+            style={[styles.followBtn, isFollowing && styles.followingBtn]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleToggleFollow(account.id);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
+              {isFollowing ? 'Following' : 'Follow'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
     );
   };
 

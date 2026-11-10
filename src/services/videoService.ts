@@ -217,6 +217,33 @@ export async function getUserVideos(creatorId: string): Promise<VideoDetailItem[
 }
 
 /**
+ * Lấy danh sách video mà User đã Thả tim (Tab 'Liked' trên S09)
+ */
+export async function getLikedVideos(userId: string): Promise<VideoDetailItem[]> {
+  const { data, error } = await supabase
+    .from('likes')
+    .select(`
+      created_at,
+      videos:video_id (
+        *,
+        profiles:creator_id (id, display_name, avatar_url),
+        audio_tracks:audio_track_id (id, title, artist, audio_url)
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching liked videos:', error);
+    throw error;
+  }
+
+  return (data || [])
+    .filter((item: any) => item.videos && item.videos.visibility !== 'DELETED')
+    .map((item: any) => mapVideoItem(item.videos, true));
+}
+
+/**
  * Lấy danh sách Bản nháp của tôi (S21 - My Drafts)
  */
 export async function getUserDrafts(creatorId: string): Promise<VideoDetailItem[]> {

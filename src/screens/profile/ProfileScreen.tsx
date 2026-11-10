@@ -138,11 +138,10 @@ export const ProfileScreen: React.FC = () => {
   if (currentView.type === 'A') {
     content = (
       <MyProfileView
-        user={myUser}
-        allUsers={users}
         onOpenFollowList={(tab) =>
           pushView({ type: 'C', ownerId: myUser.id, initialTab: tab })
         }
+        onSelectUser={(userId) => pushView({ type: 'B', userId })}
       />
     );
   } else if (currentView.type === 'B') {
