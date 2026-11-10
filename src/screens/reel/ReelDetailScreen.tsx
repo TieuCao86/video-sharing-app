@@ -16,11 +16,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { VideoItem } from "../../components/VideoItem";
+import { useAuthStore } from "../../store/useAuthStore";
+import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
 
 const { width, height } = Dimensions.get("window");
 
 // Mock video data - Using reliable public video URLs
-interface VideoData {
+export interface VideoData {
   id: string;
   url: string;
   creator: string;
@@ -28,7 +30,7 @@ interface VideoData {
   audio: string;
 }
 
-const MOCK_VIDEOS_ARRAY: VideoData[] = [
+export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   {
     id: '1',
     url: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Video/360429_small.mp4',
@@ -123,6 +125,7 @@ export const ReelDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
+  const { checkAuth } = useAuthStore();
   
   const videoId = route.params?.videoId || '3';
   
@@ -160,28 +163,32 @@ export const ReelDetailScreen: React.FC = () => {
   }).current;
 
   const handleAddComment = () => {
-    if (!commentText.trim()) return;
-    const newComment = {
-      id: Date.now().toString(),
-      user: { name: "You", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" },
-      content: commentText,
-      timeAgo: "Just now",
-      isLiked: false,
-    };
-    setComments([newComment, ...comments]);
-    setCommentText("");
+    checkAuth(() => {
+      if (!commentText.trim()) return;
+      const newComment = {
+        id: Date.now().toString(),
+        user: { name: "You", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100" },
+        content: commentText,
+        timeAgo: "Just now",
+        isLiked: false,
+      };
+      setComments([newComment, ...comments]);
+      setCommentText("");
+    });
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikes(prev => isLiked ? prev - 1 : prev + 1);
+    checkAuth(() => {
+      setIsLiked(!isLiked);
+      setLikes(prev => isLiked ? prev - 1 : prev + 1);
+    });
   };
 
   const renderVideoItem = ({ item, index }: { item: VideoData; index: number }) => (
     <VideoItem
       video={item}
       isActive={index === currentIndex}
-      onCommentPress={() => setIsCommentVisible(true)}
+      onCommentPress={() => checkAuth(() => setIsCommentVisible(true))}
       likes={likes}
       isLiked={isLiked}
       onLikePress={handleLike}
@@ -293,6 +300,8 @@ export const ReelDetailScreen: React.FC = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <LoginRequiredModal />
     </View>
   );
 };

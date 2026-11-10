@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../../constants/colors';
 import { ApiUser } from '../../../types/user.type';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
@@ -11,6 +12,7 @@ import {
 } from '../../../components/profile/ProfileTabBar';
 import { VideoThumbnailGrid } from '../../../components/profile/VideoThumbnailGrid';
 import { PLACEHOLDER_VIEW_COUNT } from '../../../constants/profile';
+import { MOCK_VIDEOS_ARRAY } from '../../reel/ReelDetailScreen';
 
 interface MyProfileViewProps {
   user: ApiUser;
@@ -23,11 +25,18 @@ const TABS: [TabItem, TabItem] = [
   { key: 'liked', label: 'Liked', iconName: 'heart-outline' },
 ];
 
+const getRandomVideoId = (): string => {
+  if (MOCK_VIDEOS_ARRAY.length === 0) return '1';
+  const index = Math.floor(Math.random() * MOCK_VIDEOS_ARRAY.length);
+  return MOCK_VIDEOS_ARRAY[index].id;
+};
+
 export const MyProfileView: React.FC<MyProfileViewProps> = ({
   user,
   allUsers,
   onOpenFollowList,
 }) => {
+  const navigation = useNavigation<any>();
   const [activeTab, setActiveTab] = useState<'my-videos' | 'liked'>('my-videos');
 
   // Fill grid with owner's video first, then other users' videos
@@ -62,9 +71,26 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     return videoItems;
   }, [activeTab, videoItems]);
 
+  const handleVideoPress = () => {
+    const videoId = getRandomVideoId();
+    navigation.navigate('ReelDetail', { videoId });
+  };
+
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfile');
+  };
+
+  const handleOpenSettings = () => {
+    navigation.navigate('Settings');
+  };
+
   return (
     <View style={styles.screen}>
-      <ProfileHeader type="A" />
+      <ProfileHeader
+        type="A"
+        onEditProfile={handleEditProfile}
+        onOptions={handleOpenSettings}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -81,6 +107,7 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
         </View>
 
         <Text style={styles.name}>{user.name}</Text>
+        {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
 
         <StatsRow
           following={user.following}
@@ -96,7 +123,10 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
           onSelectTab={(key) => setActiveTab(key as 'my-videos' | 'liked')}
         />
 
-        <VideoThumbnailGrid videos={displayedVideos} />
+        <VideoThumbnailGrid
+          videos={displayedVideos}
+          onVideoPress={handleVideoPress}
+        />
       </ScrollView>
     </View>
   );
@@ -120,7 +150,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     marginTop: 12,
+    marginBottom: 4,
+  },
+  bio: {
+    fontSize: 14,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 4,
     marginBottom: 8,
+    paddingHorizontal: 24,
   },
 });
 

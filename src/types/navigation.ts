@@ -1,4 +1,7 @@
 export type RootStackParamList = {
+  Login: undefined;
+  SignUp: undefined;
+  S12: undefined;
   MainTabs: undefined;
   Camera: undefined;
   ReelDetail: {
@@ -15,6 +18,14 @@ export type RootStackParamList = {
     audioUri?: string;
     filterApplied?: string;
   };
+  EditProfile: undefined;
+  S15: undefined;
+  Settings: undefined;
+  S16: undefined;
+  ChangePassword: undefined;
+  S17: undefined;
+  Drafts: undefined;
+  S21: undefined;
 };
 
 export type BottomTabParamList = {
@@ -23,4 +34,5 @@ export type BottomTabParamList = {
   CreateTab: undefined;
   NotificationsTab: undefined;
   ProfileTab: undefined;
+  FriendsTab?: undefined;
 };

@@ -25,4 +25,5 @@ export interface ApiUser {
   followers: number;
   likes: number;
   videos: string;
+  bio?: string;
 }
