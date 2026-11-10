@@ -5,18 +5,18 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Modal,
   FlatList,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  SafeAreaView
+  useWindowDimensions,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoItem } from "../../components/VideoItem";
 import { useAuthStore } from "../../store/useAuthStore";
 import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
@@ -32,9 +32,6 @@ import {
   CommentItem,
 } from "../../services";
 
-const { width, height } = Dimensions.get("window");
-
-// Giữ lại MOCK_VIDEOS_ARRAY cho các component profile cũ không bị lỗi export
 export interface VideoData {
   id: string;
   url: string;
@@ -85,7 +82,9 @@ export const ReelDetailScreen: React.FC = () => {
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
   const { checkAuth, user } = useAuthStore();
-
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+  
   const initialVideoId = route.params?.videoId;
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
@@ -215,12 +214,14 @@ export const ReelDetailScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
       {/* Nút Back / Đóng toàn màn hình */}
       <TouchableOpacity
-        style={styles.closeButton}
+        style={[styles.closeButton, { top: insets.top + 8 }]}
         onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <Ionicons name="close" size={28} color="#FFFFFF" />
       </TouchableOpacity>
@@ -231,31 +232,33 @@ export const ReelDetailScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         pagingEnabled
         showsVerticalScrollIndicator={false}
+        snapToInterval={screenHeight}
+        snapToAlignment="start"
+        decelerationRate="fast"
         onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 50 }}
+        viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
         getItemLayout={(_, index) => ({
-          length: height,
-          offset: height * index,
+          length: screenHeight,
+          offset: screenHeight * index,
           index,
         })}
         renderItem={({ item, index }) => (
-          <View style={styles.videoContainer}>
-            <VideoItem
-              video={{
-                id: item.id,
-                url: item.videoUrl,
-                creator: item.creator.name,
-                caption: item.caption,
-                audio: item.audioTrack?.title || 'Original Sound',
-              }}
-              isActive={currentIndex === index}
-              likes={item.likesCount}
-              isLiked={!!item.isLiked}
-              commentsCount={item.commentsCount}
-              onLikePress={handleToggleLike}
-              onCommentPress={handleOpenComments}
-            />
-          </View>
+          <VideoItem
+            video={{
+              id: item.id,
+              url: item.videoUrl,
+              creator: item.creator.name,
+              caption: item.caption,
+              audio: item.audioTrack?.title || 'Original Sound',
+            }}
+            itemHeight={screenHeight}
+            isActive={currentIndex === index}
+            likes={item.likesCount}
+            isLiked={!!item.isLiked}
+            commentsCount={item.commentsCount}
+            onLikePress={handleToggleLike}
+            onCommentPress={handleOpenComments}
+          />
         )}
       />
 
@@ -304,7 +307,7 @@ export const ReelDetailScreen: React.FC = () => {
             )}
 
             {/* Input thêm bình luận */}
-            <View style={styles.commentInputRow}>
+            <View style={[styles.commentInputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
               <TextInput
                 style={styles.commentInput}
                 placeholder="Leave comment..."
@@ -321,7 +324,7 @@ export const ReelDetailScreen: React.FC = () => {
       </Modal>
 
       <LoginRequiredModal />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -338,14 +341,8 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    top: 45,
     left: 16,
     zIndex: 99,
-  },
-  videoContainer: {
-    width,
-    height,
-    position: "relative",
   },
   modalBackdrop: {
     flex: 1,
