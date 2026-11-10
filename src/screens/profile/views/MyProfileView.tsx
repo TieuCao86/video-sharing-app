@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { colors } from '../../../constants/colors';
@@ -24,6 +26,7 @@ import {
   getProfileById,
   getUserVideos,
   getLikedVideos,
+  getFollowCounts,
   VideoDetailItem,
 } from '../../../services';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +52,8 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
   const [activeTab, setActiveTab] = useState<'my-videos' | 'liked'>('my-videos');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const lastStatsRefreshAt = useRef(0);
+  const statsRefreshInFlight = useRef(false);
 
   // Dữ liệu từ Supabase
   const [myVideos, setMyVideos] = useState<VideoDetailItem[]>([]);
@@ -61,20 +66,32 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     }
 
     try {
-      const [profileData, userVids, userLikedVids] = await Promise.all([
+      const profileKey = authUser.auth_id || authUser.id;
+      const [profileData, userVids, userLikedVids, followCounts] = await Promise.all([
         getProfileById(authUser.id),
         getUserVideos(authUser.id),
         getLikedVideos(authUser.id),
+        getFollowCounts(profileKey),
       ]);
 
-      if (profileData) {
+      if (profileData || followCounts) {
+        const stats = {
+          following: followCounts?.following ?? profileData?.following ?? 0,
+          followers: followCounts?.followers ?? profileData?.followers ?? 0,
+          likes: profileData?.likes ?? 0,
+        };
+
+        setProfileStats(stats);
+
         updateStoreProfile({
-          name: profileData.name,
-          avatar: profileData.avatar,
-          bio: profileData.bio,
-          following: profileData.following,
-          followers: profileData.followers,
-          likes: profileData.likes,
+          ...(profileData
+            ? {
+                name: profileData.name,
+                avatar: profileData.avatar,
+                bio: profileData.bio,
+              }
+            : {}),
+          ...stats,
         });
       }
 
@@ -86,7 +103,54 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [authUser?.id, updateStoreProfile]);
+  }, [authUser?.id, authUser?.auth_id, updateStoreProfile]);
+
+  const refreshProfileStats = useCallback(async () => {
+    if (!authUser?.id || statsRefreshInFlight.current) return;
+
+    statsRefreshInFlight.current = true;
+    try {
+      const profileKey = authUser.auth_id || authUser.id;
+      const [profileData, followCounts] = await Promise.all([
+        getProfileById(authUser.id),
+        getFollowCounts(profileKey),
+      ]);
+
+      if (!profileData && !followCounts) return;
+
+      const stats = {
+        following: followCounts?.following ?? profileData?.following ?? 0,
+        followers: followCounts?.followers ?? profileData?.followers ?? 0,
+        likes: profileData?.likes ?? 0,
+      };
+
+      setProfileStats(stats);
+      updateStoreProfile({
+        ...(profileData
+          ? {
+              name: profileData.name,
+              avatar: profileData.avatar,
+              bio: profileData.bio,
+            }
+          : {}),
+        ...stats,
+      });
+    } catch (err) {
+      console.error('Error refreshing profile stats:', err);
+    } finally {
+      statsRefreshInFlight.current = false;
+    }
+  }, [authUser?.id, authUser?.auth_id, updateStoreProfile]);
+
+  const handleProfileScroll = useCallback(
+    (_event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const now = Date.now();
+      if (now - lastStatsRefreshAt.current < 1500) return;
+      lastStatsRefreshAt.current = now;
+      refreshProfileStats();
+    },
+    [refreshProfileStats]
+  );
 
   // Load profile when focused or authUser changes
   useEffect(() => {
@@ -138,7 +202,11 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
   };
 
   const currentList = activeTab === 'my-videos' ? displayedMyVideos : displayedLikedVideos;
-
+  const [profileStats, setProfileStats] = useState({
+    following: authUser?.following ?? 0,
+    followers: authUser?.followers ?? 0,
+    likes: authUser?.likes ?? 0,
+  });
   return (
     <View style={styles.screen}>
       <ProfileHeader
@@ -155,6 +223,10 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          scrollEventThrottle={400}
+          onScroll={handleProfileScroll}
+          onScrollEndDrag={refreshProfileStats}
+          onMomentumScrollEnd={refreshProfileStats}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -180,9 +252,9 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
 
           {/* Stats: Following, Followers, Likes */}
           <StatsRow
-            following={authUser?.following || 0}
-            followers={authUser?.followers || 0}
-            likes={authUser?.likes || 0}
+            following={profileStats.following}
+            followers={profileStats.followers}
+            likes={profileStats.likes}
             onPressFollowing={() => onOpenFollowList('following')}
             onPressFollowers={() => onOpenFollowList('followers')}
           />

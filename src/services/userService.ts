@@ -12,13 +12,32 @@ export interface UserProfileItem {
   videosCount: number;
   isFollowing?: boolean;
 }
+const dbIdCache = new Map<string, string>();
 
+/** Đổi uid Supabase Auth -> users.id (khóa của bảng users) */
+export async function resolveDbUserId(authId?: string | null): Promise<string | undefined> {
+  if (!authId) return undefined;
+  const cached = dbIdCache.get(authId);
+  if (cached) return cached;
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_id', authId)
+    .maybeSingle();
+
+  if (error) console.error('[resolveDbUserId]', error);
+  if (!data) return undefined;
+
+  dbIdCache.set(authId, data.id);
+  return data.id;
+}
 /**
  * Lấy hồ sơ tài khoản theo userId (kèm kiểm tra xem người dùng hiện tại có đang follow hay không)
  */
-export async function getProfileById(userId: string, currentUserId?: string): Promise<UserProfileItem | null> {
+export async function getProfileById(userId: string, currentAuthId?: string): Promise<UserProfileItem | null> {
   if (!userId) return null;
-
+  const currentUserId = await resolveDbUserId(currentAuthId);
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -61,8 +80,8 @@ export async function getProfileById(userId: string, currentUserId?: string): Pr
 /**
  * Tìm kiếm tài khoản theo Tên hiển thị (Tab Accounts màn hình S02)
  */
-export async function searchProfiles(query: string, currentUserId?: string): Promise<UserProfileItem[]> {
-  const { data, error } = await supabase
+export async function searchProfiles(query: string, currentAuthId?: string): Promise<UserProfileItem[]> {
+  const currentUserId = await resolveDbUserId(currentAuthId); const { data, error } = await supabase
     .from('users')
     .select('*')
     .ilike('display_name', `%${query}%`)
@@ -155,34 +174,72 @@ export async function updateProfile(
 }
 
 /**
+ * Đếm following / followers trực tiếp từ bảng follows.
+ * Cột following_count / followers_count trên users không được cập nhật khi follow.
+ */
+export async function getFollowCounts(
+  userId: string
+): Promise<{ following: number; followers: number } | null> {
+  if (!userId) return null;
+
+  const dbId = (await resolveDbUserId(userId)) || userId;
+
+  const [followingRes, followersRes] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', dbId),
+    supabase
+      .from('follows')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', dbId),
+  ]);
+
+  if (followingRes.error || followersRes.error) {
+    console.error(
+      'Error counting follows:',
+      followingRes.error || followersRes.error
+    );
+    return null;
+  }
+
+  return {
+    following: followingRes.count ?? 0,
+    followers: followersRes.count ?? 0,
+  };
+}
+
+/**
  * Theo dõi hoặc Bỏ theo dõi tài khoản (UC20)
  */
-export async function toggleFollowUser(followerId: string, followingId: string): Promise<boolean> {
-  // Kiểm tra trạng thái hiện tại
-  const { data } = await supabase
+export async function toggleFollowUser(authId: string, followingId: string): Promise<boolean> {
+  const followerId = await resolveDbUserId(authId);
+  if (!followerId) throw new Error('Không tìm thấy hồ sơ người dùng hiện tại (users.auth_id chưa được gán).');
+  if (followerId === followingId) throw new Error('Không thể tự theo dõi chính mình.');
+
+  const { data: existing, error: checkError } = await supabase
     .from('follows')
-    .select('*')
+    .select('follower_id')
     .eq('follower_id', followerId)
     .eq('following_id', followingId)
     .maybeSingle();
+  if (checkError) throw checkError;
 
-  if (data) {
-    // Đã follow -> Hủy follow
+  if (existing) {
     const { error } = await supabase
       .from('follows')
       .delete()
       .eq('follower_id', followerId)
       .eq('following_id', followingId);
     if (error) throw error;
-    return false; // Hiện tại là chưa follow
-  } else {
-    // Chưa follow -> Thêm follow
-    const { error } = await supabase
-      .from('follows')
-      .insert({ follower_id: followerId, following_id: followingId });
-    if (error) throw error;
-    return true; // Hiện tại là đang follow
+    return false;
   }
+
+  const { error } = await supabase
+    .from('follows')
+    .insert({ follower_id: followerId, following_id: followingId });
+  if (error && error.code !== '23505') throw error; // 23505: đã follow (bấm đúp)
+  return true;
 }
 
 /**
@@ -191,56 +248,65 @@ export async function toggleFollowUser(followerId: string, followingId: string):
 export async function getFollowList(
   userId: string,
   type: 'followers' | 'following',
-  currentUserId?: string
+  currentUserId?: string,
+  isAuthId = false
 ): Promise<UserProfileItem[]> {
   try {
-    if (type === 'followers') {
-      const { data, error } = await supabase
+    const dbId = (await resolveDbUserId(userId)) || userId;
+    if (!dbId) return [];
+    void isAuthId;
+    const relatedColumn = type === 'followers' ? 'follower_id' : 'following_id';
+    const ownerColumn = type === 'followers' ? 'following_id' : 'follower_id';
+
+    const { data: followRows, error } = await supabase
+      .from('follows')
+      .select(relatedColumn)
+      .eq(ownerColumn, dbId);
+
+    if (error) throw error;
+
+    const relatedIds = Array.from(
+      new Set(
+        (followRows || [])
+          .map((row: Record<string, string>) => row[relatedColumn])
+          .filter(Boolean)
+      )
+    );
+    if (relatedIds.length === 0) return [];
+
+    const { data: profiles, error: profileError } = await supabase
+      .from('users')
+      .select('*')
+      .in('id', relatedIds);
+
+    if (profileError) throw profileError;
+
+    let followedSet = new Set<string>();
+    const viewerId = currentUserId
+      ? (await resolveDbUserId(currentUserId)) || currentUserId
+      : undefined;
+    if (viewerId) {
+      const { data: viewerFollows } = await supabase
         .from('follows')
-        .select(`
-          created_at,
-          users:follower_id (*)
-        `)
-        .eq('following_id', userId);
-
-      if (error) throw error;
-
-      return (data || [])
-        .filter((item: any) => item.users)
-        .map((item: any) => ({
-          id: item.users.id,
-          name: item.users.display_name,
-          avatar: item.users.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-          bio: item.users.bio || '',
-          following: item.users.following_count || 0,
-          followers: item.users.followers_count || 0,
-          likes: item.users.likes_count || 0,
-          videosCount: item.users.videos_count || 0,
-        }));
-    } else {
-      const { data, error } = await supabase
-        .from('follows')
-        .select(`
-          created_at,
-          users:following_id (*)
-        `)
-        .eq('follower_id', userId);
-
-      if (error) throw error;
-
-      return (data || [])
-        .filter((item: any) => item.users)
-        .map((item: any) => ({
-          id: item.users.id,
-          name: item.users.display_name,
-          avatar: item.users.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
-          bio: item.users.bio || '',
-          following: item.users.following_count || 0,
-          followers: item.users.followers_count || 0,
-          likes: item.users.likes_count || 0,
-          videosCount: item.users.videos_count || 0,
-        }));
+        .select('following_id')
+        .eq('follower_id', viewerId)
+        .in('following_id', relatedIds);
+      followedSet = new Set((viewerFollows || []).map((row) => row.following_id));
     }
+
+    return (profiles || []).map((p: any) => ({
+      id: p.id,
+      name: p.display_name,
+      avatar:
+        p.avatar_url ||
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+      bio: p.bio || '',
+      following: p.following_count || 0,
+      followers: p.followers_count || 0,
+      likes: p.likes_count || 0,
+      videosCount: p.videos_count || 0,
+      isFollowing: followedSet.has(p.id),
+    }));
   } catch (err) {
     console.error('Error fetching follow list:', err);
     return [];

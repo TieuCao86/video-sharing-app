@@ -4,6 +4,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   BackHandler,
+  ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
@@ -23,6 +25,7 @@ type ViewState =
   | { type: 'C'; ownerId: string; initialTab: 'followers' | 'following' };
 
 export const ProfileScreen: React.FC = () => {
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const { user: authUser } = useAuthStore();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -31,41 +34,35 @@ export const ProfileScreen: React.FC = () => {
   const [history, setHistory] = useState<ViewState[]>([{ type: 'A' }]);
   const [followedUserIds, setFollowedUserIds] = useState<Set<string>>(new Set());
 
-  const loadUsers = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    fetchUsers()
-      .then((data) => {
-        setUsers(data);
-      })
-      .catch((err: any) => {
-        setError(err?.message || 'Failed to load profile data');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+  const loadUsers = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      setError(null);
+
+      // Fetch dữ liệu mới từ database
+      const data = await fetchUsers();
+
+      setUsers(data);
+
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load profile data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    fetchUsers()
-      .then((data) => {
-        if (isMounted) {
-          setUsers(data);
-          setLoading(false);
-        }
-      })
-      .catch((err: any) => {
-        if (isMounted) {
-          setError(err?.message || 'Failed to load profile data');
-          setLoading(false);
-        }
-      });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
+    loadUsers();
+  }, [loadUsers]);
+  const onRefresh = useCallback(() => {
+    loadUsers(true);
+  }, [loadUsers]);
   const popView = useCallback(() => {
     setHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
   }, []);
@@ -170,9 +167,33 @@ export const ProfileScreen: React.FC = () => {
     );
   }
 
+  const fillsScreen = currentView.type === 'A' || currentView.type === 'C';
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      {content}
+    <SafeAreaView
+      style={styles.container}
+      edges={['top', 'left', 'right']}
+    >
+      {fillsScreen ? (
+        content
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {content}
+        </ScrollView>
+      )}
+
       <LoginRequiredModal />
     </SafeAreaView>
   );

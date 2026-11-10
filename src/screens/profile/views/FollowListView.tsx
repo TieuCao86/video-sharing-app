@@ -29,13 +29,14 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   const [loading, setLoading] = useState<boolean>(true);
   const [usersList, setUsersList] = useState<UserProfileItem[]>([]);
-  const [unfollowedUserIds, setUnfollowedUserIds] = useState<Set<string>>(new Set());
+  const [followOverrides, setFollowOverrides] = useState<Record<string, boolean>>({});
 
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getFollowList(owner.id, activeTab, authUser?.id);
+      const list = await getFollowList(owner.id, activeTab, authUser?.id, true);
       setUsersList(list);
+      setFollowOverrides({});
     } catch (err) {
       console.error('Error fetching follow list:', err);
     } finally {
@@ -60,15 +61,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
       if (!authUser?.id) return;
       try {
         const isNowFollowing = await toggleFollowUser(authUser.id, targetId);
-        setUnfollowedUserIds((prev) => {
-          const updated = new Set(prev);
-          if (isNowFollowing) {
-            updated.delete(targetId);
-          } else {
-            updated.add(targetId);
-          }
-          return updated;
-        });
+        setFollowOverrides((prev) => ({ ...prev, [targetId]: isNowFollowing }));
       } catch (err) {
         console.error('Error toggling follow:', err);
       }
@@ -107,7 +100,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
           data={usersList}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
-            const isFollowing = !unfollowedUserIds.has(item.id);
+            const isFollowing = followOverrides[item.id] ?? item.isFollowing ?? false;
             return (
               <UserListItem
                 user={{
