@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,14 +15,62 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../constants/colors';
 import { useDraftsStore, DraftItem } from '../../store/useDraftsStore';
 import { DraftViewer } from './DraftViewer';
+import { useAuthStore } from '../../store/useAuthStore';
+import { getUserDrafts } from '../../services/videoService';
 
 export const DraftsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { drafts } = useDraftsStore();
+  const { user: authUser } = useAuthStore();
+  const { drafts: localDrafts } = useDraftsStore();
+
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [remoteDrafts, setRemoteDrafts] = useState<DraftItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchDrafts = useCallback(async (isRefresh = false) => {
+    if (!authUser?.id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const data = await getUserDrafts(authUser.id);
+
+      // Chuyển VideoDetailItem → DraftItem format
+      const mapped: DraftItem[] = data.map((v) => ({
+        id: v.id,
+        thumbnail: v.coverUrl || '',
+        title: v.title || v.caption || 'Untitled draft',
+        updatedAt: formatRelativeTime(v.createdAt),
+        videoUrl: v.videoUrl || '',
+      }));
+
+      setRemoteDrafts(mapped);
+    } catch (err) {
+      console.error('Error loading drafts:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [authUser?.id]);
+
+  useEffect(() => {
+    fetchDrafts();
+  }, [fetchDrafts]);
+
+  // Merge local store drafts (vừa tạo chưa sync) + remote drafts từ Supabase
+  const allDrafts: DraftItem[] = [
+    ...localDrafts.filter((ld) => !remoteDrafts.some((rd) => rd.id === ld.id)),
+    ...remoteDrafts,
+  ];
+
+  const activeDraft = allDrafts.find((d) => d.id === activeDraftId);
 
   // If Draft Viewer is open, render the full-screen TikTok-style viewer
-  if (activeDraftId && drafts.some((d) => d.id === activeDraftId)) {
+  if (activeDraftId && activeDraft) {
     return (
       <DraftViewer
         initialDraftId={activeDraftId}
@@ -80,14 +130,18 @@ export const DraftsScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Drafts</Text>
         <View style={styles.headerRight}>
-          {drafts.length > 0 && (
-            <Text style={styles.countBadge}>{drafts.length}</Text>
+          {allDrafts.length > 0 && (
+            <Text style={styles.countBadge}>{allDrafts.length}</Text>
           )}
         </View>
       </View>
 
       {/* Main Content */}
-      {drafts.length === 0 ? (
+      {loading ? (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : allDrafts.length === 0 ? (
         /* Empty State */
         <View style={styles.emptyContainer}>
           <View style={styles.emptyIconCircle}>
@@ -105,18 +159,42 @@ export const DraftsScreen: React.FC = () => {
       ) : (
         /* Drafts Grid */
         <FlatList
-          data={drafts}
+          data={allDrafts}
           keyExtractor={(item) => item.id}
           numColumns={2}
           contentContainerStyle={styles.listContent}
           columnWrapperStyle={styles.columnWrapper}
           renderItem={renderDraftItem}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => fetchDrafts(true)}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
         />
       )}
     </SafeAreaView>
   );
 };
+
+/** Chuyển ISO date string thành relative time */
+function formatRelativeTime(iso?: string): string {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 const styles = StyleSheet.create({
   container: {

@@ -196,7 +196,7 @@ export const SearchScreen: React.FC = () => {
             const vids = await searchVideos(query);
             if (isMounted) setVideos(vids);
           } else if (activeTab === 'Accounts') {
-            const accs = await searchProfiles(query, user?.id);
+            const accs = await searchProfiles(query, user?.auth_id);
             if (isMounted) setAccounts(accs);
           } else if (activeTab === 'Audio') {
             const songs = await searchAudioTracks(query);
@@ -214,7 +214,7 @@ export const SearchScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [debouncedSearchText, activeTab, user?.id]);
+  }, [debouncedSearchText, activeTab, user?.auth_id]);
 
   // Dừng phát audio khi chuyển tab
   useEffect(() => {
@@ -239,7 +239,7 @@ export const SearchScreen: React.FC = () => {
   const handleToggleFollow = (targetId: string) => {
     checkAuth(async () => {
       try {
-        const nextState = await toggleFollowUser(user.id, targetId);
+        const nextState = await toggleFollowUser(user.auth_id, targetId);
         setFollowedIds((prev) => {
           const next = new Set(prev);
           if (nextState) next.add(targetId);

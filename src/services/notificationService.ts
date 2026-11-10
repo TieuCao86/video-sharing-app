@@ -145,3 +145,67 @@ export async function markAllNotificationsAsRead(recipientId: string): Promise<v
     .update({ is_read: true })
     .eq('recipient_id', recipientId);
 }
+
+/**
+ * Tạo thông báo like khi người dùng thả tim vào video
+ * @param senderId    - users.id (db id) của người thả tim
+ * @param recipientId - users.id (db id) của chủ video
+ * @param videoId     - id của video được like
+ */
+export async function createLikeNotification(
+  senderId: string,
+  recipientId: string,
+  videoId: string
+): Promise<void> {
+  try {
+    const { error } = await supabase.from('notifications').insert({
+      type: 'like',
+      sender_id: senderId,
+      recipient_id: recipientId,
+      video_id: videoId,
+      is_read: false,
+    });
+
+    if (error) {
+      console.error('[createLikeNotification] insert error:', error);
+    }
+  } catch (err) {
+    console.error('[createLikeNotification] exception:', err);
+  }
+}
+/**
+ * Tạo thông báo follow khi người dùng A bắt đầu theo dõi người dùng B
+ * @param senderId   - users.id (db id) của người thực hiện follow
+ * @param recipientId - users.id (db id) của người được follow
+ */
+export async function createFollowNotification(
+  senderId: string,
+  recipientId: string
+): Promise<void> {
+  try {
+    // Tránh tạo thông báo trùng lặp nếu đã tồn tại một follow-notification chưa đọc
+    const { data: existing } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('type', 'follow')
+      .eq('sender_id', senderId)
+      .eq('recipient_id', recipientId)
+      .maybeSingle();
+
+    if (existing) return; // đã có, bỏ qua
+
+    const { error } = await supabase.from('notifications').insert({
+      type: 'follow',
+      sender_id: senderId,
+      recipient_id: recipientId,
+      is_read: false,
+    });
+
+    if (error) {
+      console.error('[createFollowNotification] insert error:', error);
+    }
+  } catch (err) {
+    // Không để lỗi notification làm hỏng luồng follow chính
+    console.error('[createFollowNotification] exception:', err);
+  }
+}

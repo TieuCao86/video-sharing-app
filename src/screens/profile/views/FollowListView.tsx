@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../../constants/colors';
 import { ApiUser } from '../../../types/user.type';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
@@ -34,6 +35,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   onBack,
   onSelectUser,
 }) => {
+  const navigation = useNavigation<any>();
   const { user: authUser, checkAuth } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'followers' | 'following'>(initialTab);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,7 +47,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getFollowList(owner.id, activeTab, authUser?.id, true);
+      const list = await getFollowList(owner.id, activeTab, authUser?.auth_id, true);
       setUsersList(list);
       setFollowOverrides({});
     } catch (err) {
@@ -53,7 +55,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [owner.id, activeTab, authUser?.id]);
+  }, [owner.id, activeTab, authUser?.auth_id]);
 
   useEffect(() => {
     fetchList();
@@ -79,14 +81,21 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
 
   const handleToggleFollow = (targetId: string) => {
     checkAuth(async () => {
-      if (!authUser?.id) return;
+      if (!authUser?.auth_id) return;
       try {
-        const isNowFollowing = await toggleFollowUser(authUser.id, targetId);
+        const isNowFollowing = await toggleFollowUser(authUser.auth_id, targetId);
         setFollowOverrides((prev) => ({ ...prev, [targetId]: isNowFollowing }));
       } catch (err) {
         console.error('Error toggling follow:', err);
       }
     });
+  };
+
+  const handleSelectUser = (userId: string) => {
+    // Navigate ra stack UserProfile screen (truyền đúng UUID từ Supabase)
+    navigation.navigate('UserProfile', { userId });
+    // Fallback: cũng gọi callback nếu parent cần biết
+    onSelectUser?.(userId);
   };
 
   return (
@@ -169,7 +178,7 @@ export const FollowListView: React.FC<FollowListViewProps> = ({
                   bio: item.bio,
                 }}
                 isFollowing={isFollowing}
-                onPressRow={() => onSelectUser(item.id)}
+                onPressRow={() => handleSelectUser(item.id)}
                 onToggleFollow={() => handleToggleFollow(item.id)}
               />
             );

@@ -73,10 +73,10 @@ export const UserProfileScreen: React.FC = () => {
         userLikes,
         suggestions,
       ] = await Promise.all([
-        getProfileById(userId, authUser?.id),
+        getProfileById(userId, authUser?.auth_id),
         getUserVideos(userId),
         getLikedVideos(userId),
-        searchProfiles('', authUser?.id),
+        searchProfiles('', authUser?.auth_id),
       ]);
 
       if (userProfile) {
@@ -99,7 +99,7 @@ export const UserProfileScreen: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userId, authUser?.id]);
+  }, [userId, authUser?.id, authUser?.auth_id]);
 
   useEffect(() => {
     fetchUserData();
@@ -111,9 +111,9 @@ export const UserProfileScreen: React.FC = () => {
 
   const handleToggleFollow = () => {
     checkAuth(async () => {
-      if (!authUser?.id || !userId) return;
+      if (!authUser?.auth_id || !userId) return;
       try {
-        const nextState = await toggleFollowUser(authUser.id, userId);
+        const nextState = await toggleFollowUser(authUser.auth_id, userId);
         setIsFollowing(nextState);
         if (profile) {
           setProfile({
@@ -137,9 +137,9 @@ export const UserProfileScreen: React.FC = () => {
 
   const handleToggleFollowSuggestion = (id: string) => {
     checkAuth(async () => {
-      if (!authUser?.id) return;
+      if (!authUser?.auth_id) return;
       try {
-        const nextState = await toggleFollowUser(authUser.id, id);
+        const nextState = await toggleFollowUser(authUser.auth_id, id);
         setFollowedSuggestionIds((prev) => {
           const updated = new Set(prev);
           if (nextState) updated.add(id);

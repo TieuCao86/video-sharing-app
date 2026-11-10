@@ -29,15 +29,23 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       return { success: false, message: error?.message || 'Email hoặc mật khẩu không chính xác!' };
     }
 
-    // Lấy thông tin user tương ứng từ bảng users
-    const { data: profile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .maybeSingle();
+    // Lấy thông tin user từ bảng users — thử cả id = auth UID lẫn auth_id = auth UID
+    const authUid = data.user.id;
+    let profile: any = null;
+
+    // Trường hợp 1: users.id = auth UID (upsert khi signUp dùng id: data.user.id)
+    const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
+    if (byId.data) {
+      profile = byId.data;
+    } else {
+      // Trường hợp 2: users.auth_id = auth UID
+      const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
+      if (byAuthId.data) profile = byAuthId.data;
+    }
 
     const loggedInUser: UserProfile = {
-      id: data.user.id,
+      // id luôn là users.id (db PK) — nếu schema dùng auth UID làm PK thì profile.id = auth UID
+      id: profile?.id || authUid,
       name: profile?.display_name || data.user.user_metadata?.name || 'User',
       avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
       bio: profile?.bio || '',
@@ -45,12 +53,10 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       followers: profile?.followers_count || 0,
       likes: profile?.likes_count || 0,
       videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
-      auth_id: profile?.auth_id || data.user.id,
+      auth_id: authUid,
     };
 
-    // Cập nhật vào global store
     authStore.login(loggedInUser);
-
     return { success: true, user: loggedInUser };
   } catch (err: any) {
     return { success: false, message: err.message || 'Đã có lỗi xảy ra khi đăng nhập.' };
@@ -235,14 +241,21 @@ export async function checkSession(): Promise<UserProfile | null> {
   try {
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('auth_id', data.session.user.id)
-        .maybeSingle();
+      const authUid = data.session.user.id;
+      let profile: any = null;
+
+      // Thử theo users.id = auth UID trước (schema upsert với id = data.user.id)
+      const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
+      if (byId.data) {
+        profile = byId.data;
+      } else {
+        // Fallback: users.auth_id = auth UID
+        const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
+        if (byAuthId.data) profile = byAuthId.data;
+      }
 
       const userProfile: UserProfile = {
-        id: data.session.user.id,
+        id: profile?.id || authUid,
         name: profile?.display_name || data.session.user.user_metadata?.name || 'User',
         avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
         bio: profile?.bio || '',
@@ -250,7 +263,7 @@ export async function checkSession(): Promise<UserProfile | null> {
         followers: profile?.followers_count || 0,
         likes: profile?.likes_count || 0,
         videos: profile?.avatar_url || DEFAULT_AVATAR_URL,
-        auth_id: profile.auth_id
+        auth_id: authUid,
       };
 
       authStore.login(userProfile);

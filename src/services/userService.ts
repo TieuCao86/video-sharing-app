@@ -1,5 +1,6 @@
 import { supabase } from '../utils/supabase';
 import { decode } from 'base64-arraybuffer';
+import { createFollowNotification } from './notificationService';
 
 export interface UserProfileItem {
   id: string;
@@ -14,9 +15,18 @@ export interface UserProfileItem {
 }
 const dbIdCache = new Map<string, string>();
 
+/** Kiểm tra chuỗi có đúng định dạng UUID v4 không */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUUID(val?: string | null): val is string {
+  return !!val && UUID_REGEX.test(val);
+}
+
 /** Đổi uid Supabase Auth -> users.id (khóa của bảng users) */
 export async function resolveDbUserId(authId?: string | null): Promise<string | undefined> {
   if (!authId) return undefined;
+  // Nếu không phải UUID hợp lệ → không cần query DB, tránh lỗi "invalid input syntax for type uuid"
+  if (!isUUID(authId)) return undefined;
+
   const cached = dbIdCache.get(authId);
   if (cached) return cached;
 
@@ -32,12 +42,20 @@ export async function resolveDbUserId(authId?: string | null): Promise<string | 
   dbIdCache.set(authId, data.id);
   return data.id;
 }
+
 /**
  * Lấy hồ sơ tài khoản theo userId (kèm kiểm tra xem người dùng hiện tại có đang follow hay không)
+ * @param userId        - users.id (db id, UUID) của user cần xem
+ * @param currentAuthId - auth_id (Supabase Auth UID, UUID) của người đang đăng nhập
  */
 export async function getProfileById(userId: string, currentAuthId?: string): Promise<UserProfileItem | null> {
-  if (!userId) return null;
-  const currentUserId = await resolveDbUserId(currentAuthId);
+  // Guard: userId phải là UUID hợp lệ
+  if (!isUUID(userId)) return null;
+
+  // Resolve auth_id → users.id (chỉ khi currentAuthId là UUID hợp lệ)
+  const currentUserId = isUUID(currentAuthId)
+    ? await resolveDbUserId(currentAuthId)
+    : undefined;
   const { data, error } = await supabase
     .from('users')
     .select('*')
@@ -81,7 +99,9 @@ export async function getProfileById(userId: string, currentAuthId?: string): Pr
  * Tìm kiếm tài khoản theo Tên hiển thị (Tab Accounts màn hình S02)
  */
 export async function searchProfiles(query: string, currentAuthId?: string): Promise<UserProfileItem[]> {
-  const currentUserId = await resolveDbUserId(currentAuthId); const { data, error } = await supabase
+  // Chỉ resolve khi currentAuthId là UUID hợp lệ
+  const currentUserId = isUUID(currentAuthId) ? await resolveDbUserId(currentAuthId) : undefined;
+  const { data, error } = await supabase
     .from('users')
     .select('*')
     .ilike('display_name', `%${query}%`)
@@ -182,7 +202,11 @@ export async function getFollowCounts(
 ): Promise<{ following: number; followers: number } | null> {
   if (!userId) return null;
 
-  const dbId = (await resolveDbUserId(userId)) || userId;
+  // Resolve auth_id → db id (chỉ khi là UUID hợp lệ)
+  const dbId = isUUID(userId)
+    ? (await resolveDbUserId(userId)) || userId
+    : null;
+  if (!dbId || !isUUID(dbId)) return null;
 
   const [followingRes, followersRes] = await Promise.all([
     supabase
@@ -239,6 +263,10 @@ export async function toggleFollowUser(authId: string, followingId: string): Pro
     .from('follows')
     .insert({ follower_id: followerId, following_id: followingId });
   if (error && error.code !== '23505') throw error; // 23505: đã follow (bấm đúp)
+
+  // Tạo notification cho người được follow (fire-and-forget, không block luồng chính)
+  createFollowNotification(followerId, followingId).catch(() => { });
+
   return true;
 }
 

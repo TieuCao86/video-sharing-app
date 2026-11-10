@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../constants/colors';
 import { ApiUser } from '../../types/user.type';
 import { fetchUsers } from '../../api/userApi';
@@ -26,6 +27,7 @@ type ViewState =
 
 export const ProfileScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const navigation = useNavigation<any>();
   const { user: authUser } = useAuthStore();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -162,7 +164,7 @@ export const ProfileScreen: React.FC = () => {
         allUsers={users}
         initialTab={currentView.initialTab}
         onBack={popView}
-        onSelectUser={(userId) => pushView({ type: 'B', userId })}
+        onSelectUser={(userId) => navigation.navigate('UserProfile', { userId })}
       />
     );
   }
