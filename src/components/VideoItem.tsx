@@ -5,14 +5,11 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const { width, height } = Dimensions.get('window');
 
 interface VideoData {
   id: string;
@@ -25,6 +22,7 @@ interface VideoData {
 interface VideoItemProps {
   video: VideoData;
   isActive: boolean;
+  itemHeight: number;
   onCommentPress: () => void;
   likes: number;
   isLiked: boolean;
@@ -35,6 +33,7 @@ interface VideoItemProps {
 export const VideoItem: React.FC<VideoItemProps> = ({
   video,
   isActive,
+  itemHeight,
   onCommentPress,
   likes,
   isLiked,
@@ -45,11 +44,11 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   const [videoError, setVideoError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const insets = useSafeAreaInsets();
-  const bottomOffset = Math.max(insets.bottom, 16);
+  const bottomOffset = Math.max(insets.bottom, 20);
 
   // Create video player
-  const player = useVideoPlayer(video.url, player => {
-    player.loop = true;
+  const player = useVideoPlayer(video.url, (p) => {
+    p.loop = true;
   });
 
   // Auto play/pause based on visibility
@@ -92,7 +91,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { height: itemHeight }]}>
       {/* Video Player */}
       <TouchableOpacity 
         style={styles.videoContainer}
@@ -102,6 +101,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         <VideoView
           style={styles.video}
           player={player}
+          contentFit="contain"
           allowsPictureInPicture
           nativeControls={false}
         />
@@ -130,11 +130,11 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         </View>
       )}
 
-      {/* Overlay */}
+      {/* Overlay gradient/shade */}
       <View style={styles.overlay} pointerEvents="none" />
 
-      {/* Right Actions */}
-      <View style={[styles.rightActionsContainer, { bottom: 80 + bottomOffset }]}>
+      {/* Right Actions (Like, Comment, Share) */}
+      <View style={[styles.rightActionsContainer, { bottom: 60 + bottomOffset }]}>
         <View style={styles.avatarWrapper}>
           <Image
             source={{ uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" }}
@@ -148,7 +148,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
           <Ionicons
             name={isLiked ? "heart" : "heart-outline"}
-            size={28}
+            size={32}
             color={isLiked ? "#FF2442" : "#FFFFFF"}
           />
           <Text style={styles.actionText}>
@@ -157,12 +157,12 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton} onPress={onCommentPress}>
-          <Ionicons name="chatbubble-outline" size={26} color="#FFFFFF" />
+          <Ionicons name="chatbubble-outline" size={28} color="#FFFFFF" />
           <Text style={styles.actionText}>{commentsCount}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="arrow-redo-outline" size={26} color="#FFFFFF" />
+          <Ionicons name="arrow-redo-outline" size={28} color="#FFFFFF" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
@@ -171,10 +171,10 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Bottom Info */}
-      <View style={[styles.bottomInfoContainer, { bottom: 16 + bottomOffset }]}>
-        <Text style={styles.creatorName}>{video.creator}</Text>
-        <Text style={styles.caption}>{video.caption}</Text>
+      {/* Bottom Info (Creator, Caption, Music) */}
+      <View style={[styles.bottomInfoContainer, { bottom: 12 + bottomOffset }]}>
+        <Text style={styles.creatorName}>@{video.creator}</Text>
+        <Text style={styles.caption} numberOfLines={2}>{video.caption}</Text>
 
         <View style={styles.audioRow}>
           <Ionicons name="musical-note" size={14} color="#FFFFFF" />
@@ -189,9 +189,10 @@ export const VideoItem: React.FC<VideoItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width,
-    height,
+    width: '100%',
     backgroundColor: '#000000',
+    position: 'relative',
+    overflow: 'hidden',
   },
   videoContainer: {
     ...StyleSheet.absoluteFill,
@@ -208,22 +209,22 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   rightActionsContainer: {
     position: 'absolute',
     right: 12,
-    bottom: 100,
     alignItems: 'center',
+    zIndex: 20,
   },
   avatarWrapper: {
-    marginBottom: 20,
+    marginBottom: 18,
     position: 'relative',
   },
   creatorAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
@@ -240,7 +241,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   actionText: {
     color: '#FFFFFF',
@@ -250,9 +251,9 @@ const styles = StyleSheet.create({
   },
   bottomInfoContainer: {
     position: 'absolute',
-    bottom: 24,
     left: 16,
-    width: '80%',
+    right: 80,
+    zIndex: 20,
   },
   creatorName: {
     color: '#FFFFFF',
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     marginTop: 12,
     fontWeight: '600',
   },
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     marginTop: 16,
   },
