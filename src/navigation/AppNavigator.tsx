@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
+import { OTPScreen } from '../screens/auth/OTPScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { ReelDetailScreen } from '../screens/reel/ReelDetailScreen';
 import { CameraScreen } from '../screens/camera';
@@ -37,6 +38,8 @@ export const AppNavigator = () => {
         {/* Auth Screens */}
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="OTP" component={OTPScreen} />
+        <Stack.Screen name="S14" component={OTPScreen} />
 
         {/* Video Player */}
         <Stack.Screen name="ReelDetail" component={ReelDetailScreen} />

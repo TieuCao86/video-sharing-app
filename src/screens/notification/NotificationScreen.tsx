@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   View,
@@ -6,138 +6,134 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-interface Notification {
-  id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention';
-  user: {
-    name: string;
-    avatar: string;
-  };
-  message: string;
-  time: string;
-  isRead: boolean;
-  thumbnail?: string; // For video-related notifications
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'like',
-    user: {
-      name: 'Laura',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-    },
-    message: 'liked your video',
-    time: '2 min ago',
-    isRead: false,
-    thumbnail: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=200',
-  },
-  {
-    id: '2',
-    type: 'comment',
-    user: {
-      name: 'William',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
-    },
-    message: 'commented on your video: "Amazing content!"',
-    time: '15 min ago',
-    isRead: false,
-    thumbnail: 'https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=200',
-  },
-  {
-    id: '3',
-    type: 'follow',
-    user: {
-      name: 'Julia',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-    },
-    message: 'started following you',
-    time: '1 hour ago',
-    isRead: false,
-  },
-  {
-    id: '4',
-    type: 'like',
-    user: {
-      name: 'Peter',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100',
-    },
-    message: 'liked your video',
-    time: '2 hours ago',
-    isRead: true,
-    thumbnail: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200',
-  },
-  {
-    id: '5',
-    type: 'mention',
-    user: {
-      name: 'Adam',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-    },
-    message: 'mentioned you in a comment',
-    time: '3 hours ago',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'comment',
-    user: {
-      name: 'Liz',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100',
-    },
-    message: 'commented: "Love this! 😍"',
-    time: '5 hours ago',
-    isRead: true,
-    thumbnail: 'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=200',
-  },
-  {
-    id: '7',
-    type: 'follow',
-    user: {
-      name: 'Cris',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100',
-    },
-    message: 'started following you',
-    time: '1 day ago',
-    isRead: true,
-  },
-];
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { useAuthStore } from '../../store/useAuthStore';
+import {
+  NotificationItem,
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from '../../services/notificationService';
+import { LoginRequiredModal } from '../../components/auth/LoginRequiredModal';
 
 export const NotificationScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'All' | 'Unread'>('All');
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const navigation = useNavigation<any>();
+  const { user, isLoggedIn, showLoginModal } = useAuthStore();
 
-  const filteredNotifications = activeTab === 'Unread' 
-    ? notifications.filter(n => !n.isRead)
+  const [activeTab, setActiveTab] = useState<'All' | 'Unread'>('All');
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const fetchNotifs = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    try {
+      const data = await getNotifications(user.id);
+      setNotifications(data);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isLoggedIn && user?.id) {
+      fetchNotifs();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isLoggedIn, user?.id, fetchNotifs]);
+
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetchNotifs();
+  }, [fetchNotifs]);
+
+  const filteredNotifications = activeTab === 'Unread'
+    ? notifications.filter((n) => !n.isRead)
     : notifications;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, isRead: true } : notif
-      )
-    );
+  const handleNotificationPress = async (item: NotificationItem) => {
+    // Đánh dấu đã đọc nếu chưa đọc
+    if (!item.isRead) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n))
+      );
+      try {
+        await markNotificationAsRead(item.id);
+      } catch (err) {
+        console.error('Error marking as read:', err);
+      }
+    }
+
+    // Điều hướng tới video nếu có
+    if (item.video?.id) {
+      navigation.navigate('ReelDetail', { videoId: item.video.id });
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, isRead: true }))
-    );
+  const handleMarkAllRead = async () => {
+    if (!user?.id || unreadCount === 0) return;
+
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await markAllNotificationsAsRead(user.id);
+    } catch (err) {
+      console.error('Error marking all as read:', err);
+    }
+  };
+
+  const renderBadgeIcon = (type: NotificationItem['type']) => {
+    switch (type) {
+      case 'like':
+        return (
+          <View style={[styles.typeBadge, { backgroundColor: '#FF2442' }]}>
+            <Ionicons name="heart" size={10} color="#FFFFFF" />
+          </View>
+        );
+      case 'comment':
+        return (
+          <View style={[styles.typeBadge, { backgroundColor: '#007AFF' }]}>
+            <Ionicons name="chatbubble" size={9} color="#FFFFFF" />
+          </View>
+        );
+      case 'follow':
+        return (
+          <View style={[styles.typeBadge, { backgroundColor: '#34C759' }]}>
+            <Ionicons name="person-add" size={10} color="#FFFFFF" />
+          </View>
+        );
+      default:
+        return (
+          <View style={[styles.typeBadge, { backgroundColor: '#5856D6' }]}>
+            <Ionicons name="notifications" size={10} color="#FFFFFF" />
+          </View>
+        );
+    }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead}>
-            <Text style={styles.markAllRead}>Mark all read</Text>
+        <Text style={styles.headerTitle}>Thông báo</Text>
+        {isLoggedIn && unreadCount > 0 && (
+          <TouchableOpacity onPress={handleMarkAllRead}>
+            <Text style={styles.markAllRead}>Đánh dấu đã đọc</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -149,7 +145,7 @@ export const NotificationScreen: React.FC = () => {
           onPress={() => setActiveTab('All')}
         >
           <Text style={[styles.tabText, activeTab === 'All' && styles.tabTextActive]}>
-            All
+            Tất cả
           </Text>
         </TouchableOpacity>
 
@@ -158,59 +154,100 @@ export const NotificationScreen: React.FC = () => {
           onPress={() => setActiveTab('Unread')}
         >
           <Text style={[styles.tabText, activeTab === 'Unread' && styles.tabTextActive]}>
-            Unread {unreadCount > 0 && `(${unreadCount})`}
+            Chưa đọc {unreadCount > 0 && `(${unreadCount})`}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Notifications List */}
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {filteredNotifications.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No notifications</Text>
-          </View>
-        ) : (
-          filteredNotifications.map((notification) => (
-            <TouchableOpacity
-              key={notification.id}
-              style={[
-                styles.notificationItem,
-                !notification.isRead && styles.notificationUnread
-              ]}
-              onPress={() => markAsRead(notification.id)}
-              activeOpacity={0.7}
-            >
-              {/* Avatar */}
-              <Image 
-                source={{ uri: notification.user.avatar }} 
-                style={styles.avatar}
-              />
+      {/* Content */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF2442" />
+        </View>
+      ) : !isLoggedIn ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="notifications-off-outline" size={54} color="#C7C7CC" />
+          <Text style={styles.emptyTitle}>Chưa đăng nhập</Text>
+          <Text style={styles.emptySubtitle}>
+            Vui lòng đăng nhập để xem thông báo tương tác của bạn.
+          </Text>
+          <TouchableOpacity
+            style={styles.loginPromptButton}
+            onPress={showLoginModal}
+          >
+            <Text style={styles.loginPromptText}>Đăng nhập ngay</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={onRefresh}
+              tintColor="#FF2442"
+              colors={['#FF2442']}
+            />
+          }
+        >
+          {filteredNotifications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="mail-unread-outline" size={54} color="#C7C7CC" />
+              <Text style={styles.emptyTitle}>Không có thông báo nào</Text>
+              <Text style={styles.emptySubtitle}>
+                {activeTab === 'Unread'
+                  ? 'Bạn đã đọc tất cả thông báo!'
+                  : 'Khi có người thích, bình luận hoặc theo dõi, thông báo sẽ hiển thị ở đây.'}
+              </Text>
+            </View>
+          ) : (
+            filteredNotifications.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.notificationItem,
+                  !item.isRead && styles.notificationUnread,
+                ]}
+                onPress={() => handleNotificationPress(item)}
+                activeOpacity={0.7}
+              >
+                {/* Avatar with badge */}
+                <View style={styles.avatarContainer}>
+                  <Image
+                    source={{ uri: item.sender.avatar }}
+                    style={styles.avatar}
+                  />
+                  {renderBadgeIcon(item.type)}
+                </View>
 
-              {/* Content */}
-              <View style={styles.contentContainer}>
-                <Text style={styles.messageText}>
-                  <Text style={styles.userName}>{notification.user.name}</Text>
-                  {' '}
-                  {notification.message}
-                </Text>
-                <Text style={styles.timeText}>{notification.time}</Text>
-              </View>
+                {/* Content */}
+                <View style={styles.contentContainer}>
+                  <Text style={styles.messageText}>
+                    <Text style={styles.userName}>{item.sender.name}</Text>
+                    {' '}
+                    {item.message}
+                  </Text>
+                  <Text style={styles.timeText}>{item.timeAgo}</Text>
+                </View>
 
-              {/* Thumbnail or Unread Indicator */}
-              {notification.thumbnail ? (
-                <Image 
-                  source={{ uri: notification.thumbnail }} 
-                  style={styles.thumbnail}
-                />
-              ) : (
-                !notification.isRead && <View style={styles.unreadDot} />
-              )}
-            </TouchableOpacity>
-          ))
-        )}
+                {/* Video Cover Thumbnail or Unread indicator */}
+                {item.video?.coverUrl ? (
+                  <Image
+                    source={{ uri: item.video.coverUrl }}
+                    style={styles.thumbnail}
+                  />
+                ) : (
+                  !item.isRead && <View style={styles.unreadDot} />
+                )}
+              </TouchableOpacity>
+            ))
+          )}
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
+          <View style={{ height: 30 }} />
+        </ScrollView>
+      )}
+
+      <LoginRequiredModal />
     </SafeAreaView>
   );
 };
@@ -225,18 +262,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 0.5,
     borderBottomColor: '#EFEFEF',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#000000',
   },
   markAllRead: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#FF2442',
   },
 
@@ -249,16 +286,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: '#F5F5F5',
   },
   tabActive: {
-    backgroundColor: '#FF2D55',
+    backgroundColor: '#FF2442',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#666666',
   },
@@ -266,7 +303,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Notification Item
+  // List
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -279,11 +321,27 @@ const styles = StyleSheet.create({
   notificationUnread: {
     backgroundColor: '#FFF5F7',
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: 12,
+    backgroundColor: '#E5E5EA',
+  },
+  typeBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   contentContainer: {
     flex: 1,
@@ -296,34 +354,59 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   userName: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#000000',
   },
   timeText: {
     fontSize: 12,
-    color: '#999999',
+    color: '#8E8E93',
   },
   thumbnail: {
-    width: 56,
-    height: 56,
+    width: 50,
+    height: 50,
     borderRadius: 8,
     marginLeft: 8,
+    backgroundColor: '#E5E5EA',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FF2D55',
+    backgroundColor: '#FF2442',
     marginLeft: 8,
   },
 
   // Empty State
   emptyState: {
-    paddingVertical: 60,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
+    paddingVertical: 80,
   },
-  emptyText: {
-    fontSize: 15,
-    color: '#999999',
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111111',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#8E8E93',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  loginPromptButton: {
+    marginTop: 20,
+    backgroundColor: '#FF2442',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  loginPromptText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

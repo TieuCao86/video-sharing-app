@@ -58,13 +58,11 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     try {
       const res = await signUpWithEmail(displayName, email, password);
       if (res.success) {
-        if (onSignUp) {
-          onSignUp();
-        } else if (navigation.canGoBack()) {
-          navigation.goBack();
-        } else {
-          navigation.replace('MainTabs');
-        }
+        // Chuyển sang giao diện OTP kèm thông tin email
+        navigation.navigate('OTP', {
+          email: email.trim(),
+          displayName: displayName.trim(),
+        });
       } else {
         setErrorMessage(res.message || 'Đăng ký thất bại');
       }

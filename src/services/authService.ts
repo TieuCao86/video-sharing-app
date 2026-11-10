@@ -90,7 +90,7 @@ export async function signUpWithEmail(
     }
 
     if (data.user) {
-      // Tạo bản ghi tương ứng trong bảng users
+      // Lưu thông tin người dùng vào bảng users
       await supabase.from('users').upsert({
         id: data.user.id,
         email: trimmedEmail,
@@ -102,32 +102,112 @@ export async function signUpWithEmail(
         videos_count: 0,
       });
 
-      // Nếu có session (email confirmation OFF) → tự động login
-      if (data.session) {
-        const newUser: UserProfile = {
-          id: data.user.id,
-          name: trimmedName,
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
-          bio: '',
-          following: 0,
-          followers: 0,
-          likes: 0,
-          videos: '',
-        };
-        authStore.login(newUser);
-        return { success: true, user: newUser };
-      }
-
-      // Email confirmation ON → thông báo cần xác nhận email
+      // Trả về success: true để chuyển sang màn hình OTP
       return {
-        success: false,
-        message: 'Vui lòng kiểm tra email và xác nhận tài khoản trước khi đăng nhập.',
+        success: true,
+        message: 'Mã xác nhận OTP đã được gửi về email của bạn.',
       };
     }
 
     return { success: true };
   } catch (err: any) {
     return { success: false, message: err.message || 'Lỗi khi tạo tài khoản.' };
+  }
+}
+
+/**
+ * Xác thực mã OTP sau khi đăng ký (S14 - OTP Verification)
+ */
+export async function verifyOtpCode(
+  email: string,
+  token: string,
+  displayName?: string
+): Promise<AuthResponse> {
+  const trimmedEmail = email.trim();
+  const trimmedToken = token.trim();
+
+  if (!trimmedEmail || !trimmedToken) {
+    return { success: false, message: 'Vui lòng nhập đầy đủ mã OTP.' };
+  }
+
+  try {
+    // 1. Thử xác thực với type 'signup'
+    let { data, error } = await supabase.auth.verifyOtp({
+      email: trimmedEmail,
+      token: trimmedToken,
+      type: 'signup',
+    });
+
+    // 2. Nếu thất bại, thử lại với type 'email'
+    if (error) {
+      const retry = await supabase.auth.verifyOtp({
+        email: trimmedEmail,
+        token: trimmedToken,
+        type: 'email',
+      });
+      if (!retry.error && retry.data.user) {
+        data = retry.data;
+        error = null;
+      }
+    }
+
+    if (error || !data.user) {
+      return {
+        success: false,
+        message: error?.message || 'Mã OTP không chính xác hoặc đã hết hạn.',
+      };
+    }
+
+    // Cập nhật thông tin vào bảng users (nếu chưa có)
+    await supabase.from('users').upsert({
+      id: data.user.id,
+      email: trimmedEmail,
+      display_name: displayName || data.user.user_metadata?.name || 'User',
+      avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500',
+      following_count: 0,
+      followers_count: 0,
+      likes_count: 0,
+      videos_count: 0,
+    });
+
+    // Đăng xuất phiên tạm để bắt người dùng đăng nhập tại màn hình Login
+    await supabase.auth.signOut();
+    authStore.logout();
+
+    return {
+      success: true,
+      message: 'Xác thực tài khoản thành công! Vui lòng đăng nhập.',
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err.message || 'Đã có lỗi xảy ra khi xác thực OTP.',
+    };
+  }
+}
+
+/**
+ * Gửi lại mã OTP
+ */
+export async function resendOtpCode(email: string): Promise<AuthResponse> {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) {
+    return { success: false, message: 'Vui lòng nhập Email để gửi lại mã.' };
+  }
+
+  try {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: trimmedEmail,
+    });
+
+    if (error) {
+      return { success: false, message: error.message };
+    }
+
+    return { success: true, message: 'Đã gửi lại mã OTP về email của bạn.' };
+  } catch (err: any) {
+    return { success: false, message: err.message || 'Lỗi khi gửi lại OTP.' };
   }
 }
 
