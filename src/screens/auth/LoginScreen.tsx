@@ -10,8 +10,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { CustomButton } from "../../components/buttons/CustomButton";
-import { authStore } from "../../store/useAuthStore";
+import { loginWithEmail } from "../../services/authService";
 
 interface LoginScreenProps {
   onLogin?: () => void;
@@ -22,24 +23,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onLogin,
   onNavigateToRegister,
 }) => {
+  const navigation = useNavigation<any>();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleLoginPress = () => {
+  const handleLoginPress = async () => {
+    setErrorMessage(null);
+    if (!email.trim() || !password) {
+      setErrorMessage("Vui lòng nhập email và mật khẩu");
+      return;
+    }
+
     setIsLoading(true);
-
-    setTimeout(() => {
-      setIsLoading(false);
-
-      if (email.trim() === "admin@gmail.com" && password === "123456") {
-        authStore.login();
-        onLogin?.();
+    try {
+      const res = await loginWithEmail(email, password);
+      if (res.success) {
+        if (onLogin) {
+          onLogin();
+        } else if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.replace('MainTabs');
+        }
       } else {
-        alert("Email hoặc mật khẩu không chính xác!");
+        setErrorMessage(res.message || "Đăng nhập thất bại");
       }
-    }, 1000);
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Đã có lỗi xảy ra");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -61,6 +77,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
         <Text style={styles.title}>LOGIN</Text>
 
+        {errorMessage && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={16} color="#FF2D55" />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        )}
+
         <View style={styles.inputContainer}>
           <Ionicons
             name="mail-outline"
@@ -73,7 +96,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             placeholder="Enter your email"
             placeholderTextColor="#8E8E93"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              setErrorMessage(null);
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
           />
@@ -91,7 +117,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             placeholder="Enter your password"
             placeholderTextColor="#8E8E93"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              setErrorMessage(null);
+            }}
             secureTextEntry={!showPassword}
           />
           <TouchableOpacity
@@ -106,80 +135,120 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Sử dụng CustomButton */}
         <CustomButton
-          title="LOGIN"
+          title="Login"
           onPress={handleLoginPress}
-          size="large"
           isLoading={isLoading}
-          style={styles.loginButtonSpacing}
+          style={styles.loginButton}
+          textStyle={styles.loginButtonText}
         />
 
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>{"Don't have an account? "}</Text>
-          <TouchableOpacity onPress={onNavigateToRegister}>
-            <Text style={styles.linkText}>Register now</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don&apos;t have an account? </Text>
+          <TouchableOpacity onPress={() => {
+            if (onNavigateToRegister) {
+              onNavigateToRegister();
+            } else {
+              navigation.navigate('SignUp');
+            }
+          }}>
+            <Text style={styles.linkText}>Sign Up</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          onPress={() => {
-            authStore.logout();
-            onLogin?.();
-          }}
-          style={styles.guestButton}
-        >
-          <Text style={styles.guestButtonText}>Explore as Guest</Text>
-        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  content: { flex: 1, justifyContent: "center", paddingHorizontal: 28 },
-  logoContainer: { alignItems: "center", marginBottom: 24 },
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
   logoCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: 3,
-    borderColor: "#FF2D55",
+    backgroundColor: "#FFF0F3",
     justifyContent: "center",
     alignItems: "center",
   },
   title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#000000",
+    fontSize: 22,
+    fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 32,
+    marginBottom: 24,
+    letterSpacing: 1.5,
+    color: "#000000",
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF0F3",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#FF2D55",
+    fontSize: 13,
+    marginLeft: 6,
+    flex: 1,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3F3F5",
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    height: 52,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
     marginBottom: 16,
+    backgroundColor: "#FAFAFA",
   },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: "#000000" },
-  eyeIcon: { padding: 4 },
-  loginButtonSpacing: { marginTop: 12 },
-  footerRow: { flexDirection: "row", justifyContent: "center", marginTop: 24 },
-  footerText: { fontSize: 14, color: "#666666" },
-  linkText: { fontSize: 14, color: "#2B6CB0", fontWeight: "600" },
-  guestButton: {
-    marginTop: 18,
-    alignItems: "center",
-    paddingVertical: 10,
+  inputIcon: {
+    marginRight: 10,
   },
-  guestButtonText: {
-    fontSize: 14,
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: "#000000",
+  },
+  eyeIcon: {
+    padding: 4,
+  },
+  loginButton: {
+    marginTop: 8,
+    backgroundColor: "#FF2D55",
+    borderRadius: 10,
+    height: 48,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+  footerText: {
     color: "#8E8E93",
-    fontWeight: "500",
+    fontSize: 14,
+  },
+  linkText: {
+    color: "#FF2D55",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });

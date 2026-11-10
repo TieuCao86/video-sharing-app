@@ -4,4 +4,5 @@ export * from './userService';
 export * from './videoService';
 export * from './commentService';
 export * from './notificationService';
+export * from './authService';
 

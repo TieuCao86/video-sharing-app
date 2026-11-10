@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { CustomButton } from '../../components/buttons/CustomButton';
+import { signUpWithEmail } from '../../services/authService';
 
 interface SignUpScreenProps {
   onSignUp?: () => void;
@@ -22,6 +24,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   onSignUp,
   onNavigateToLogin,
 }) => {
+  const navigation = useNavigation<any>();
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,13 +32,47 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSignUpPress = () => {
+  const handleSignUpPress = async () => {
+    setErrorMessage(null);
+
+    if (displayName.trim().length < 2 || displayName.trim().length > 50) {
+      setErrorMessage('Tên hiển thị phải từ 2 đến 50 ký tự');
+      return;
+    }
+    if (!email.trim()) {
+      setErrorMessage('Vui lòng nhập địa chỉ Email');
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage('Mật khẩu tối thiểu phải 6 ký tự');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage('Mật khẩu xác nhận không khớp');
+      return;
+    }
+
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const res = await signUpWithEmail(displayName, email, password);
+      if (res.success) {
+        if (onSignUp) {
+          onSignUp();
+        } else if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.replace('MainTabs');
+        }
+      } else {
+        setErrorMessage(res.message || 'Đăng ký thất bại');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Đã có lỗi xảy ra');
+    } finally {
       setIsLoading(false);
-      if (onSignUp) onSignUp();
-    }, 1500);
+    }
   };
 
   return (
@@ -53,6 +90,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
           <Text style={styles.title}>SIGN UP</Text>
 
+          {errorMessage && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color="#FF2D55" />
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+
           <View style={styles.inputGroup}>
             <View style={styles.inputContainer}>
               <Ionicons name="person-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
@@ -61,7 +105,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 placeholder="Display Name"
                 placeholderTextColor="#8E8E93"
                 value={displayName}
-                onChangeText={setDisplayName}
+                onChangeText={(text) => {
+                  setDisplayName(text);
+                  setErrorMessage(null);
+                }}
               />
             </View>
             <Text style={styles.helperText}>*2–50 characters*</Text>
@@ -75,7 +122,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 placeholder="Email Address"
                 placeholderTextColor="#8E8E93"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setErrorMessage(null);
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -90,7 +140,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 placeholder="Password"
                 placeholderTextColor="#8E8E93"
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setErrorMessage(null);
+                }}
                 secureTextEntry={!showPassword}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
@@ -101,7 +154,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 />
               </TouchableOpacity>
             </View>
-            <Text style={styles.helperText}>*8–64 chars, letters & numbers*</Text>
+            <Text style={styles.helperText}>*At least 6 characters*</Text>
           </View>
 
           <View style={styles.inputGroup}>
@@ -112,7 +165,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 placeholder="Confirm Password"
                 placeholderTextColor="#8E8E93"
                 value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  setErrorMessage(null);
+                }}
                 secureTextEntry={!showConfirmPassword}
               />
               <TouchableOpacity
@@ -128,19 +184,26 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             </View>
           </View>
 
-          {/* Sử dụng CustomButton */}
           <CustomButton
-            title="SIGN UP"
+            title="Sign Up"
             onPress={handleSignUpPress}
-            size="large"
             isLoading={isLoading}
-            style={styles.signUpButtonSpacing}
+            style={styles.signUpButton}
+            textStyle={styles.signUpButtonText}
           />
 
-          <View style={styles.footerRow}>
+          <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={onNavigateToLogin}>
-              <Text style={styles.linkText}>Login here</Text>
+            <TouchableOpacity onPress={() => {
+              if (onNavigateToLogin) {
+                onNavigateToLogin();
+              } else if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Login');
+              }
+            }}>
+              <Text style={styles.linkText}>Login</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -150,34 +213,104 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 24 },
-  logoContainer: { alignItems: 'center', marginBottom: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    justifyContent: 'center',
+    flexGrow: 1,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   logoCircle: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    borderWidth: 3,
-    borderColor: '#FF2D55',
+    backgroundColor: '#FFF0F3',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: { fontSize: 26, fontWeight: '800', color: '#000000', textAlign: 'center', marginBottom: 24 },
-  inputGroup: { marginBottom: 14 },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    letterSpacing: 1.5,
+    color: '#000000',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F3',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#FF2D55',
+    fontSize: 13,
+    marginLeft: 6,
+    flex: 1,
+  },
+  inputGroup: {
+    marginBottom: 12,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F3F3F5',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    height: 52,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 48,
+    backgroundColor: '#FAFAFA',
   },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, fontSize: 15, color: '#000000' },
-  eyeIcon: { padding: 4 },
-  helperText: { fontSize: 12, color: '#777777', textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
-  signUpButtonSpacing: { marginTop: 16 },
-  footerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  footerText: { fontSize: 14, color: '#666666' },
-  linkText: { fontSize: 14, color: '#2B6CB0', fontWeight: '600' },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#000000',
+  },
+  eyeIcon: {
+    padding: 4,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  signUpButton: {
+    marginTop: 12,
+    backgroundColor: '#FF2D55',
+    borderRadius: 10,
+    height: 48,
+  },
+  signUpButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  footerText: {
+    color: '#8E8E93',
+    fontSize: 14,
+  },
+  linkText: {
+    color: '#FF2D55',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
 });
