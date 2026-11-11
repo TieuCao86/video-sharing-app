@@ -15,6 +15,9 @@ interface VideoData {
   id: string;
   url: string;
   creator: string;
+  creatorAvatar: string;
+  canFollow: boolean;
+  isFollowing: boolean;
   caption: string;
   audio: string;
 }
@@ -28,6 +31,8 @@ interface VideoItemProps {
   isLiked: boolean;
   onLikePress: () => void;
   commentsCount: number;
+  onFollowPress: () => void;
+  isFollowLoading: boolean;
 }
 
 export const VideoItem: React.FC<VideoItemProps> = ({
@@ -39,6 +44,8 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   isLiked,
   onLikePress,
   commentsCount,
+  onFollowPress,
+  isFollowLoading,
 }) => {
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -137,12 +144,29 @@ export const VideoItem: React.FC<VideoItemProps> = ({
       <View style={[styles.rightActionsContainer, { bottom: 60 + bottomOffset }]}>
         <View style={styles.avatarWrapper}>
           <Image
-            source={{ uri: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" }}
+            source={{ uri: video.creatorAvatar }}
             style={styles.creatorAvatar}
           />
-          <View style={styles.plusBadge}>
-            <Ionicons name="add" size={10} color="#FFFFFF" />
-          </View>
+          {video.canFollow ? (
+            <TouchableOpacity
+              style={[styles.plusBadge, video.isFollowing && styles.followingBadge]}
+              onPress={onFollowPress}
+              disabled={isFollowLoading}
+              accessibilityRole="button"
+              accessibilityLabel={video.isFollowing ? 'Unfollow creator' : 'Follow creator'}
+              hitSlop={8}
+            >
+              {isFollowLoading ? (
+                <ActivityIndicator size="small" color={video.isFollowing ? '#FF2442' : '#FFFFFF'} />
+              ) : (
+                <Ionicons
+                  name={video.isFollowing ? 'checkmark' : 'add'}
+                  size={12}
+                  color={video.isFollowing ? '#FF2442' : '#FFFFFF'}
+                />
+              )}
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
@@ -233,11 +257,14 @@ const styles = StyleSheet.create({
     bottom: -4,
     alignSelf: 'center',
     backgroundColor: '#FF2442',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  followingBadge: {
+    backgroundColor: '#FFFFFF',
   },
   actionButton: {
     alignItems: 'center',

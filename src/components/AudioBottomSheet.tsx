@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,86 +9,12 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
+import { AudioTrackItem, getAudioTracks, searchAudioTracks } from '../services';
 
-export interface AudioTrack {
-  id: string;
-  title: string;
-  artist: string;
-  duration: string;
-  thumbnail: string;
-  audioUrl: string;
-}
-
-const MOCK_AUDIO_TRACKS: AudioTrack[] = [
-  {
-    id: 'a1',
-    title: 'Quá đủ rồi',
-    artist: 'CoolKid',
-    duration: '04:03',
-    thumbnail: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/ArtistImage/quaduroi.jfif',
-    audioUrl: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Music/QUA%20DU%20ROI%20-%20COOLKID.mp3',
-  },
-  {
-    id: 'a2',
-    title: 'Người Im Lặng Gặp Người Hay Nói',
-    artist: 'HIEUTHUHAI',
-    duration: '05:22',
-    thumbnail: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/ArtistImage/c0742c35795d4d234bf86cc7258b5077.jpg',
-    audioUrl: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Music/nguoiimlanggapnguoihaynoi.mp3',
-  },
-  {
-    id: 'a3',
-    title: 'Sunny',
-    artist: 'Summer Vibes',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-  },
-  {
-    id: 'a4',
-    title: 'Flowers',
-    artist: 'Nature Sounds',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-  },
-  {
-    id: 'a5',
-    title: 'Morning coffee',
-    artist: 'Chill Beats',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-  },
-  {
-    id: 'a6',
-    title: 'City lights',
-    artist: 'Urban Life',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1477233534935-f5e6fe7c1159?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-  },
-  {
-    id: 'a7',
-    title: 'Ocean waves',
-    artist: 'Relaxing',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3',
-  },
-  {
-    id: 'a8',
-    title: 'Happy moments',
-    artist: 'Feel Good',
-    duration: '00:30',
-    thumbnail: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=200',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3',
-  },
-];
+export type AudioTrack = AudioTrackItem;
 
 interface AudioBottomSheetProps {
   visible: boolean;
@@ -104,17 +30,49 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
   selectedAudio,
 }: AudioBottomSheetProps) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
+  const [loadingTracks, setLoadingTracks] = useState(true);
+  const [tracksError, setTracksError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentSource, setCurrentSource] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   // Create player with source
   const player = useAudioPlayer(currentSource || undefined);
   const status = useAudioPlayerStatus(player);
 
-  const filteredAudio = MOCK_AUDIO_TRACKS.filter(track =>
-    track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    track.artist.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  useEffect(() => {
+    if (!visible) return;
+
+    let active = true;
+    const requestId = ++requestIdRef.current;
+    const timer = setTimeout(() => {
+      const loadTracks = async () => {
+        setLoadingTracks(true);
+        setTracksError(null);
+        try {
+          const query = searchQuery.trim();
+          const tracks = query ? await searchAudioTracks(query) : await getAudioTracks(50);
+          if (active && requestId === requestIdRef.current) setAudioTracks(tracks);
+        } catch (error) {
+          console.error('Error loading audio for recording:', error);
+          if (active && requestId === requestIdRef.current) {
+            setTracksError('Could not load audio. Check your connection and try again.');
+          }
+        } finally {
+          if (active && requestId === requestIdRef.current) setLoadingTracks(false);
+        }
+      };
+
+      void loadTracks();
+    }, searchQuery.trim() ? 350 : 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [visible, searchQuery, retryCount]);
 
   // Setup audio mode on mount
   useEffect(() => {
@@ -131,31 +89,19 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
     setupAudio();
   }, []);
 
-  // Debug: log status changes
-  useEffect(() => {
-    console.log('Player status:', {
-      playing: status.playing,
-      isLoaded: status.isLoaded,
-      currentTime: status.currentTime,
-      duration: status.duration,
-    });
-  }, [status.playing, status.isLoaded]);
-
   // Auto play when loaded
   useEffect(() => {
     if (status.isLoaded && playingId && !status.playing) {
-      console.log('Auto playing after load...');
       player.play();
     }
-  }, [status.isLoaded, playingId]);
+  }, [status.isLoaded, status.playing, playingId, player]);
 
   // Stop audio when modal closes
   useEffect(() => {
     if (!visible && status.playing) {
       player.pause();
-      setPlayingId(null);
     }
-  }, [visible]);
+  }, [visible, player, status.playing]);
 
   const handleUseAudio = (audio: AudioTrack) => {
     onSelectAudio(audio);
@@ -163,14 +109,8 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
   };
 
   const handlePlayPause = (audio: AudioTrack) => {
-    console.log('=== handlePlayPause ===');
-    console.log('Audio:', audio.title);
-    console.log('Current playingId:', playingId);
-    console.log('Status playing:', status.playing);
-
     // If already playing this track, pause it
     if (playingId === audio.id && status.playing) {
-      console.log('Action: Pausing');
       player.pause();
       setPlayingId(null);
       return;
@@ -178,14 +118,11 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
 
     // If same track but paused, just resume
     if (playingId === audio.id && !status.playing && status.isLoaded) {
-      console.log('Action: Resuming');
       player.play();
       return;
     }
 
     // Load new track
-    console.log('Action: Loading new track');
-    console.log('URL:', audio.audioUrl);
     setPlayingId(audio.id);
     setCurrentSource(audio.audioUrl);
   };
@@ -245,7 +182,23 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
             style={styles.audioScroll}
             showsVerticalScrollIndicator={false}
           >
-            {filteredAudio.map((audio) => (
+            {loadingTracks && audioTracks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="large" color="#FF2D55" />
+                <Text style={styles.emptyText}>Loading audio...</Text>
+              </View>
+            ) : tracksError && audioTracks.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="cloud-offline-outline" size={44} color="#ccc" />
+                <Text style={styles.emptyText}>{tracksError}</Text>
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => setRetryCount((count) => count + 1)}
+                >
+                  <Text style={styles.retryButtonText}>Try again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : audioTracks.map((audio) => (
               <View key={audio.id} style={styles.audioItem}>
                 {/* Thumbnail with Play Button */}
                 <TouchableOpacity
@@ -253,7 +206,7 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
                   onPress={() => handlePlayPause(audio)}
                 >
                   <Image
-                    source={{ uri: audio.thumbnail }}
+                    source={{ uri: audio.thumbnailUrl || 'https://via.placeholder.com/150' }}
                     style={styles.thumbnail}
                   />
                   <View style={styles.playOverlay}>
@@ -270,7 +223,9 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
                   <Text style={styles.audioTitle} numberOfLines={1}>
                     {audio.title}
                   </Text>
-                  <Text style={styles.audioDuration}>{audio.duration}</Text>
+                  <Text style={styles.audioDuration} numberOfLines={1}>
+                    {audio.artist} · {audio.durationFormatted}
+                  </Text>
                 </View>
 
                 {/* Use Button */}
@@ -296,12 +251,23 @@ export const AudioBottomSheet: React.FC<AudioBottomSheetProps> = ({
               </View>
             ))}
 
-            {filteredAudio.length === 0 && (
+            {!loadingTracks && !tracksError && audioTracks.length === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="musical-notes-outline" size={48} color="#ccc" />
                 <Text style={styles.emptyText}>No audio found</Text>
               </View>
             )}
+            {loadingTracks && audioTracks.length > 0 ? (
+              <ActivityIndicator style={styles.listLoader} color="#FF2D55" />
+            ) : null}
+            {tracksError && audioTracks.length > 0 ? (
+              <TouchableOpacity
+                style={styles.inlineError}
+                onPress={() => setRetryCount((count) => count + 1)}
+              >
+                <Text style={styles.inlineErrorText}>{tracksError} Tap to retry.</Text>
+              </TouchableOpacity>
+            ) : null}
           </ScrollView>
         </View>
       </View>
@@ -461,5 +427,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    borderRadius: 18,
+    backgroundColor: '#FF2D55',
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  listLoader: {
+    marginVertical: 12,
+  },
+  inlineError: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  inlineErrorText: {
+    color: '#C62828',
+    textAlign: 'center',
   },
 });

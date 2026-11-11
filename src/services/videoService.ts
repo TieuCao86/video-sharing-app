@@ -25,6 +25,7 @@ export interface VideoDetailItem {
     id: string;
     name: string;
     avatar: string;
+    isFollowing?: boolean;
   };
   audioTrack?: {
     id: string;
@@ -124,7 +125,12 @@ function formatViews(num: number): string {
 /**
  * Format raw Supabase video item sang client UI format
  */
-function mapVideoItem(v: any, isLiked = false): VideoDetailItem {
+function mapVideoItem(
+  v: any,
+  isLiked = false,
+  followedSet?: ReadonlySet<string>
+): VideoDetailItem {
+  const creatorId = v.users?.id || v.profiles?.id || '';
   return {
     id: v.id,
     videoUrl: v.video_url || '',
@@ -139,9 +145,10 @@ function mapVideoItem(v: any, isLiked = false): VideoDetailItem {
     createdAt: v.created_at,
     visibility: v.visibility,
     creator: {
-      id: v.users?.id || v.profiles?.id || '',
+      id: creatorId,
       name: v.users?.display_name || v.profiles?.display_name || 'Anonymous',
       avatar: v.users?.avatar_url || v.profiles?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+      isFollowing: followedSet?.has(creatorId) ?? false,
     },
     audioTrack: v.audio_tracks
       ? {
@@ -181,17 +188,32 @@ export async function getTrendingVideos(limit = 10, currentUserId?: string): Pro
 
   // Nếu có user đang đăng nhập → batch check isLiked cho toàn bộ video
   let likedSet = new Set<string>();
+  let followedSet = new Set<string>();
   if (currentUserId && videos.length > 0) {
     const videoIds = videos.map((v: any) => v.id);
-    const { data: likedRows } = await supabase
-      .from('likes')
-      .select('video_id')
-      .eq('user_id', currentUserId)
-      .in('video_id', videoIds);
-    likedSet = new Set((likedRows || []).map((r: any) => r.video_id));
+    const creatorIds = Array.from(new Set(videos.map((v: any) => v.creator_id).filter(Boolean)));
+    const [likesResult, followsResult] = await Promise.all([
+      supabase
+        .from('likes')
+        .select('video_id')
+        .eq('user_id', currentUserId)
+        .in('video_id', videoIds),
+      creatorIds.length > 0
+        ? supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUserId)
+            .in('following_id', creatorIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (likesResult.error) console.error('Error fetching video likes:', likesResult.error);
+    if (followsResult.error) console.error('Error fetching followed creators:', followsResult.error);
+    likedSet = new Set((likesResult.data || []).map((r: any) => r.video_id));
+    followedSet = new Set((followsResult.data || []).map((r: any) => r.following_id));
   }
 
-  return videos.map((v: any) => mapVideoItem(v, likedSet.has(v.id)));
+  return videos.map((v: any) => mapVideoItem(v, likedSet.has(v.id), followedSet));
 }
 
 /**
