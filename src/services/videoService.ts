@@ -310,7 +310,6 @@ export async function toggleLikeVideo(userId: string, videoId: string): Promise<
   if (readError) throw readError;
 
   let liked = false;
-  let delta = 0;
 
   if (data) {
     const { error } = await supabase
@@ -320,32 +319,21 @@ export async function toggleLikeVideo(userId: string, videoId: string): Promise<
       .eq('video_id', videoId);
     if (error) throw error;
     liked = false;
-    delta = -1;
   } else {
     const { error } = await supabase
       .from('likes')
       .insert({ user_id: dbUserId, video_id: videoId });
     if (error && error.code !== '23505') throw error;
     liked = true;
-    delta = error?.code === '23505' ? 0 : 1;
   }
 
   const { data: video, error: videoError } = await supabase
     .from('videos')
-    .select('likes_count, creator_id')
+    .select('creator_id')
     .eq('id', videoId)
     .maybeSingle();
 
   if (videoError) throw videoError;
-
-  if (video && delta !== 0) {
-    const nextCount = Math.max((video.likes_count || 0) + delta, 0);
-    const { error: updateError } = await supabase
-      .from('videos')
-      .update({ likes_count: nextCount })
-      .eq('id', videoId);
-    if (updateError) throw updateError;
-  }
 
   if (liked && video?.creator_id) {
     const creatorDbId = (await resolveDbUserId(video.creator_id)) ?? video.creator_id;

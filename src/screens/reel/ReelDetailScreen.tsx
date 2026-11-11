@@ -90,6 +90,8 @@ export const ReelDetailScreen: React.FC = () => {
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
   const [followingCreatorIds, setFollowingCreatorIds] = useState<Set<string>>(new Set());
+  const [likingVideoIds, setLikingVideoIds] = useState<Set<string>>(new Set());
+  const likingVideoIdsRef = useRef(new Set<string>());
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -236,27 +238,43 @@ export const ReelDetailScreen: React.FC = () => {
     });
   };
 
-  const handleToggleLike = async () => {
-    if (!currentVideo?.id) return;
+  const handleToggleLike = () => {
+    const videoId = currentVideo?.id;
+    if (!videoId || likingVideoIdsRef.current.has(videoId)) return;
 
-    checkAuth(async () => {
-      try {
-        const nextLikedState = await toggleLikeVideo(user.id, currentVideo.id);
-        setVideos((prev) =>
-          prev.map((v, i) => {
-            if (i === currentIndex) {
+    checkAuth(() => {
+      likingVideoIdsRef.current.add(videoId);
+      setLikingVideoIds((prev) => new Set(prev).add(videoId));
+
+      void toggleLikeVideo(user.id, videoId)
+        .then((nextLikedState) => {
+          setVideos((prev) =>
+            prev.map((video) => {
+              if (video.id !== videoId || !!video.isLiked === nextLikedState) return video;
+
               return {
-                ...v,
+                ...video,
                 isLiked: nextLikedState,
-                likesCount: nextLikedState ? v.likesCount + 1 : Math.max(v.likesCount - 1, 0),
+                likesCount: Math.max(video.likesCount + (nextLikedState ? 1 : -1), 0),
               };
-            }
-            return v;
-          })
-        );
-      } catch (err) {
-        console.error("Error toggle like video:", err);
-      }
+            })
+          );
+        })
+        .catch((err: unknown) => {
+          console.error("Error toggle like video:", err);
+          Alert.alert(
+            "Không thể cập nhật lượt thích",
+            err instanceof Error ? err.message : "Vui lòng thử lại."
+          );
+        })
+        .finally(() => {
+          likingVideoIdsRef.current.delete(videoId);
+          setLikingVideoIds((prev) => {
+            const next = new Set(prev);
+            next.delete(videoId);
+            return next;
+          });
+        });
     });
   };
 
@@ -353,6 +371,7 @@ export const ReelDetailScreen: React.FC = () => {
             isActive={currentIndex === index}
             likes={item.likesCount}
             isLiked={!!item.isLiked}
+            isLikeLoading={likingVideoIds.has(item.id)}
             commentsCount={item.commentsCount}
             onLikePress={handleToggleLike}
             onCommentPress={() => handleOpenComments(item.id)}
