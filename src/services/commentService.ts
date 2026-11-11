@@ -134,22 +134,16 @@ export async function addComment(
 
   const profileMap = await fetchProfilesByIds([dbUserId]);
 
-  // Đồng bộ comments_count (cùng cách với views_count) và báo cho chủ video.
-  // Lỗi phụ không được làm hỏng bình luận vừa gửi.
+  // Trigger cập nhật comments_count; service chỉ tạo thông báo cho chủ video.
   void (async () => {
     try {
       const { data: video } = await supabase
         .from('videos')
-        .select('comments_count, creator_id')
+        .select('creator_id')
         .eq('id', videoId)
         .maybeSingle();
 
       if (!video) return;
-
-      await supabase
-        .from('videos')
-        .update({ comments_count: (video.comments_count || 0) + 1 })
-        .eq('id', videoId);
 
       const creatorId = video.creator_id as string | null;
       if (!creatorId || creatorId === dbUserId) return;
@@ -268,4 +262,3 @@ export async function toggleLikeComment(
 
   return { liked: true, likesCount: updated.likesCount };
 }
-
