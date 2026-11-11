@@ -30,6 +30,7 @@ interface VideoItemProps {
   onCommentPress: () => void;
   likes: number;
   isLiked: boolean;
+  isLikeLoading: boolean;
   onLikePress: () => void;
   commentsCount: number;
   onFollowPress: () => void;
@@ -44,6 +45,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   onCommentPress,
   likes,
   isLiked,
+  isLikeLoading,
   onLikePress,
   commentsCount,
   onFollowPress,
@@ -180,12 +182,20 @@ export const VideoItem: React.FC<VideoItemProps> = ({
           ) : null}
         </View>
 
-        <TouchableOpacity style={styles.actionButton} onPress={onLikePress}>
-          <Ionicons
-            name={isLiked ? "heart" : "heart-outline"}
-            size={32}
-            color={isLiked ? "#FF2442" : "#FFFFFF"}
-          />
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={onLikePress}
+          disabled={isLikeLoading}
+        >
+          {isLikeLoading ? (
+            <ActivityIndicator size="small" color={isLiked ? "#FF2442" : "#FFFFFF"} />
+          ) : (
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={32}
+              color={isLiked ? "#FF2442" : "#FFFFFF"}
+            />
+          )}
           <Text style={styles.actionText}>
             {likes >= 1000 ? `${(likes / 1000).toFixed(1)}k` : likes}
           </Text>
