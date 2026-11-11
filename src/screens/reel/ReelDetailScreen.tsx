@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
   useWindowDimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -18,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoItem } from "../../components/VideoItem";
-import { useAuthStore } from "../../store/useAuthStore";
+import { authStore, useAuthStore } from "../../store/useAuthStore";
 import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
 
 // Services kết nối Supabase
@@ -28,6 +29,7 @@ import {
   toggleLikeVideo,
   getCommentsByVideoId,
   addComment,
+  toggleLikeComment,
   VideoDetailItem,
   CommentItem,
 } from "../../services";
@@ -98,6 +100,9 @@ export const ReelDetailScreen: React.FC = () => {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [postingComment, setPostingComment] = useState(false);
+  const [commentVideoId, setCommentVideoId] = useState<string | null>(null);
+  const [likingCommentIds, setLikingCommentIds] = useState<Set<string>>(new Set());
 
   // Fetch danh sách video từ Supabase
   useEffect(() => {
@@ -150,30 +155,83 @@ export const ReelDetailScreen: React.FC = () => {
     }
   }, [user?.id]);
 
-  const handleOpenComments = () => {
-    if (currentVideo?.id) {
-      loadComments(currentVideo.id);
-      setIsCommentVisible(true);
-    }
+  const handleOpenComments = (videoId: string) => {
+    setCommentVideoId(videoId);
+    loadComments(videoId);
+    setIsCommentVisible(true);
   };
 
-  const handleAddComment = async () => {
-    if (!commentText.trim() || !currentVideo?.id) return;
+  const handleAddComment = () => {
+    const text = commentText.trim();
+    const videoId = commentVideoId;
+    if (!text || !videoId || postingComment) return;
 
-    checkAuth(async () => {
-      try {
-        const newCmt = await addComment(currentVideo.id, user.id, commentText);
-        setComments((prev) => [newCmt, ...prev]);
-        setCommentText("");
-        // Cập nhật số đếm comment trên video
-        setVideos((prev) =>
-          prev.map((v, i) =>
-            i === currentIndex ? { ...v, commentsCount: v.commentsCount + 1 } : v
-          )
-        );
-      } catch (err: any) {
-        alert(err.message || "Không thể gửi bình luận");
-      }
+    checkAuth(() => {
+      const { isLoggedIn, user: currentUser } = authStore.getState();
+      if (!isLoggedIn || !currentUser?.id) return;
+
+      setPostingComment(true);
+      addComment(videoId, currentUser.id, text)
+        .then((newCmt) => {
+          const comment: CommentItem = {
+            ...newCmt,
+            userName:
+              newCmt.userName && newCmt.userName !== "Anonymous"
+                ? newCmt.userName
+                : currentUser.name || "Bạn",
+            userAvatar: newCmt.userAvatar || currentUser.avatar,
+          };
+          setComments((prev) => [comment, ...prev]);
+          setCommentText("");
+          setVideos((prev) =>
+            prev.map((v) =>
+              v.id === videoId
+                ? { ...v, commentsCount: (v.commentsCount || 0) + 1 }
+                : v
+            )
+          );
+        })
+        .catch((err: any) => {
+          Alert.alert(
+            "Không thể gửi bình luận",
+            err?.message || "Vui lòng thử lại."
+          );
+        })
+        .finally(() => setPostingComment(false));
+    });
+  };
+
+  const handleToggleCommentLike = (commentId: string) => {
+    if (likingCommentIds.has(commentId)) return;
+
+    checkAuth(() => {
+      const { isLoggedIn, user: currentUser } = authStore.getState();
+      if (!isLoggedIn || !currentUser?.id) return;
+
+      setLikingCommentIds((prev) => new Set(prev).add(commentId));
+      toggleLikeComment(currentUser.id, commentId)
+        .then((result) => {
+          setComments((prev) =>
+            prev.map((comment) =>
+              comment.id === commentId
+                ? { ...comment, isLiked: result.liked, likesCount: result.likesCount }
+                : comment
+            )
+          );
+        })
+        .catch((err: any) => {
+          Alert.alert(
+            "Không thể thích bình luận",
+            err?.message || "Vui lòng thử lại."
+          );
+        })
+        .finally(() => {
+          setLikingCommentIds((prev) => {
+            const next = new Set(prev);
+            next.delete(commentId);
+            return next;
+          });
+        });
     });
   };
 
@@ -259,7 +317,7 @@ export const ReelDetailScreen: React.FC = () => {
             isLiked={!!item.isLiked}
             commentsCount={item.commentsCount}
             onLikePress={handleToggleLike}
-            onCommentPress={handleOpenComments}
+            onCommentPress={() => handleOpenComments(item.id)}
           />
         )}
       />
@@ -291,6 +349,7 @@ export const ReelDetailScreen: React.FC = () => {
               <FlatList
                 data={comments}
                 keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
                 style={{ flex: 1 }}
                 renderItem={({ item }) => (
                   <View style={styles.commentRow}>
@@ -299,7 +358,28 @@ export const ReelDetailScreen: React.FC = () => {
                       <Text style={styles.commentAuthor}>{item.userName}</Text>
                       <Text style={styles.commentBody}>{item.content}</Text>
                     </View>
-                    <Ionicons name="heart-outline" size={16} color="#888888" />
+                    <TouchableOpacity
+                      style={styles.commentLikeBtn}
+                      onPress={() => handleToggleCommentLike(item.id)}
+                      disabled={likingCommentIds.has(item.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={item.isLiked ? "heart" : "heart-outline"}
+                        size={16}
+                        color={item.isLiked ? "#FF2442" : "#888888"}
+                      />
+                      {(item.likesCount ?? 0) > 0 ? (
+                        <Text
+                          style={[
+                            styles.commentLikeCount,
+                            item.isLiked && styles.commentLikeCountActive,
+                          ]}
+                        >
+                          {item.likesCount}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
                   </View>
                 )}
                 ListEmptyComponent={
@@ -316,9 +396,26 @@ export const ReelDetailScreen: React.FC = () => {
                 placeholderTextColor="#999999"
                 value={commentText}
                 onChangeText={setCommentText}
+                editable={!postingComment}
+                maxLength={500}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={handleAddComment}
               />
-              <TouchableOpacity onPress={handleAddComment} style={styles.sendBtn}>
-                <Ionicons name="send" size={20} color="#FF2442" />
+              <TouchableOpacity
+                onPress={handleAddComment}
+                style={styles.sendBtn}
+                disabled={postingComment || !commentText.trim()}
+              >
+                {postingComment ? (
+                  <ActivityIndicator size="small" color="#FF2442" />
+                ) : (
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color={commentText.trim() ? "#FF2442" : "#CCCCCC"}
+                  />
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -373,8 +470,22 @@ const styles = StyleSheet.create({
   },
   commentRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 14,
+  },
+  commentLikeBtn: {
+    alignItems: "center",
+    marginLeft: 8,
+    marginTop: 2,
+    minWidth: 24,
+  },
+  commentLikeCount: {
+    fontSize: 11,
+    color: "#888888",
+    marginTop: 2,
+  },
+  commentLikeCountActive: {
+    color: "#FF2442",
   },
   commentAvatar: {
     width: 36,
