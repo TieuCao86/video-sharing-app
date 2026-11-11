@@ -89,7 +89,13 @@ export const DraftsScreen: React.FC = () => {
           accessibilityRole="button"
           accessibilityLabel={`Open draft ${item.title}`}
         >
-          <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+          {item.thumbnail ? (
+            <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+          ) : (
+            <View style={styles.thumbnailFallback}>
+              <Ionicons name="videocam" size={36} color="#FFFFFF" />
+            </View>
+          )}
 
           {/* Draft Badge */}
           <View style={styles.badge}>
@@ -254,6 +260,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  thumbnailFallback: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1E1E1E',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     position: 'absolute',

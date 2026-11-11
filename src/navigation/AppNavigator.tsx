@@ -8,6 +8,7 @@ import { OTPScreen } from '../screens/auth/OTPScreen';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { ReelDetailScreen } from '../screens/reel/ReelDetailScreen';
 import { CameraScreen } from '../screens/camera';
+import RecordPreviewScreen from '../screens/camera/RecordPreviewScreen';
 import { VideoListScreen } from '../screens/video-list';
 import { AudioListScreen } from '../screens/audio/AudioListScreen';
 import { UserProfileScreen } from '../screens/profile/UserProfileScreen';
@@ -16,6 +17,7 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
 import { DraftsScreen } from '../screens/drafts/DraftsScreen';
 import { DraftViewerScreen } from '../screens/drafts/DraftViewerScreen';
+import PostVideoScreen from '../screens/camera/PostVideoScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { checkSession } from '../services/authService';
 
@@ -71,6 +73,16 @@ export const AppNavigator = () => {
           name="Camera"
           component={CameraScreen}
           options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+        />
+        <Stack.Screen
+          name="RecordPreview"
+          component={RecordPreviewScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'slide_from_right', gestureEnabled: false }}
+        />
+        <Stack.Screen
+          name="PostVideo"
+          component={PostVideoScreen}
+          options={{ presentation: 'fullScreenModal', animation: 'slide_from_right' }}
         />
 
         {/* S15 - Edit Profile */}

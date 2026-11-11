@@ -173,6 +173,11 @@ export const DraftVideoItem: React.FC<DraftVideoItemProps> = ({
         <Text style={styles.draftTitleText} numberOfLines={2}>
           {draft.title}
         </Text>
+        {draft.audioTitle ? (
+          <Text style={styles.draftUpdatedText} numberOfLines={1}>
+            {draft.audioTitle}
+          </Text>
+        ) : null}
         <Text style={styles.draftUpdatedText}>
           Last updated {draft.updatedAt}
         </Text>

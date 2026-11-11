@@ -117,9 +117,9 @@ export async function getNotifications(recipientId: string): Promise<Notificatio
         },
         video: n.video
           ? {
-              id: n.video.id,
-              coverUrl: n.video.cover_url,
-            }
+            id: n.video.id,
+            coverUrl: n.video.cover_url,
+          }
           : undefined,
       };
     });
@@ -196,22 +196,11 @@ export async function createCommentLikeNotification(
       is_read: false,
     };
 
+    // notification_type hiện có like | comment | follow | mention.
     const { error } = await supabase.from('notifications').insert({
       ...payload,
-      type: 'comment_like',
+      type: 'like',
     });
-
-    // Schema cũ chỉ cho phép like/comment/follow/mention.
-    if (error?.code === '23514') {
-      const fallback = await supabase.from('notifications').insert({
-        ...payload,
-        type: 'like',
-      });
-      if (fallback.error) {
-        console.error('[createCommentLikeNotification] fallback error:', fallback.error);
-      }
-      return;
-    }
 
     if (error) {
       console.error('[createCommentLikeNotification] insert error:', error);
