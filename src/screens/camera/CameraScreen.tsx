@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,8 +8,8 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { CameraView, CameraType, FlashMode, useCameraPermissions } from 'expo-camera';
-import { useNavigation } from '@react-navigation/native';
+import { CameraView, CameraType, FlashMode, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { RecordingTimer } from '../../components/RecordingTimer';
@@ -18,17 +18,33 @@ import { FilterOverlay } from '../../components/FilterOverlay';
 import { TimerBottomSheet, TimerOption } from '../../components/TimerBottomSheet';
 import { AudioBottomSheet, AudioTrack } from '../../components/AudioBottomSheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { deleteRecording, persistRecording } from '../../utils/persistRecording';
+
+const MAX_DURATION_SECONDS = 180;
+const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
 export default function CameraScreen() {
-  const navigation = useNavigation();
-  const cameraRef = useRef<any>(null);
+  const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
+  const cameraRef = useRef<CameraView>(null);
   const insets = useSafeAreaInsets();
-  
+  const mountedRef = useRef(true);
+  const discardRef = useRef(false);
+  const recordingLockRef = useRef(false);
+  const recordedSecondsRef = useRef(0);
+  const stopRequestedRef = useRef(false);
+  const selectedAudioIdRef = useRef<string | undefined>(undefined);
+  const selectedAudioTitleRef = useRef<string | undefined>(undefined);
+
   const [facing, setFacing] = useState<CameraType>('back');
   const [flash, setFlash] = useState<FlashMode>('off');
   const [torch, setTorch] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [recordedSeconds, setRecordedSeconds] = useState(0);
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<Filter | null>(null);
   const [showTimerSheet, setShowTimerSheet] = useState(false);
@@ -38,143 +54,339 @@ export default function CameraScreen() {
   const [selectedAudio, setSelectedAudio] = useState<AudioTrack | null>(null);
 
   useEffect(() => {
-    // Request permissions on mount
-    (async () => {
-      await requestPermission();
-      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (mediaStatus !== 'granted') {
-        Alert.alert('Permission needed', 'Media library permission is required');
-      }
-    })();
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  // Countdown timer effect
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setCameraReady(false);
+        setCountdown(null);
+      };
+    }, [])
+  );
+
   useEffect(() => {
-    if (countdown !== null && countdown > 0) {
-      const timer = setTimeout(() => {
+    selectedAudioIdRef.current = selectedAudio?.id;
+    selectedAudioTitleRef.current = selectedAudio?.title;
+  }, [selectedAudio]);
+
+  const askedPermissionsRef = useRef(false);
+
+  useEffect(() => {
+    if (askedPermissionsRef.current) return;
+    askedPermissionsRef.current = true;
+    (async () => {
+      await requestPermission();
+      await requestMicPermission();
+      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (mediaStatus !== 'granted') {
+        Alert.alert('Permission needed', 'Media library permission is required to upload a video');
+      }
+    })();
+  }, [requestMicPermission, requestPermission]);
+
+  const startRecordingRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    if (countdown === null) return;
+
+    const timer = setTimeout(() => {
+      if (countdown <= 1) {
+        setCountdown(null);
+        void startRecordingRef.current();
+      } else {
         setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
-      // Start recording after countdown
-      setCountdown(null);
-      startRecording();
-    }
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
-  if (!permission) {
-    return <View style={styles.container} />;
-  }
+  const needsCamera = !permission?.granted;
+  const needsMic = !micPermission?.granted;
 
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>Camera permission is required</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const controlsLocked = isRecording || isStopping || countdown !== null;
 
   const toggleCameraFacing = () => {
+    if (controlsLocked) return;
+    setCameraReady(false);
     setFacing(current => (current === 'back' ? 'front' : 'back'));
   };
 
   const toggleFlash = () => {
+    if (controlsLocked) return;
     const newTorch = !torch;
     setTorch(newTorch);
     setFlash(newTorch ? 'on' : 'off');
-    console.log('Flash/Torch toggled:', newTorch);
   };
 
-  const startRecording = async () => {
-    if (!cameraRef.current) return;
-    
+  const startRecording = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Record on a phone', 'Video recording needs the iOS or Android app.');
+      return;
+    }
+
+    if (!cameraRef.current || !cameraReady || recordingLockRef.current) {
+      if (!cameraReady && mountedRef.current) {
+        Alert.alert('Camera not ready', 'Wait for the preview, then try again.');
+      }
+      return;
+    }
+
+    recordingLockRef.current = true;
+    discardRef.current = false;
+    stopRequestedRef.current = false;
+    recordedSecondsRef.current = 0;
+    setRecordedSeconds(0);
+    setIsRecording(true);
+
+    const startedAt = Date.now();
+    const tick = setInterval(() => {
+      const seconds = Math.min(
+        MAX_DURATION_SECONDS,
+        Math.floor((Date.now() - startedAt) / 1000)
+      );
+      if (seconds <= recordedSecondsRef.current) return;
+      recordedSecondsRef.current = seconds;
+      if (mountedRef.current) setRecordedSeconds(seconds);
+    }, 250);
+    let temporaryVideoUri: string | null = null;
+    let savedVideoUri: string | null = null;
+
     try {
-      setIsRecording(true);
-      const video = await cameraRef.current.recordAsync({
-        maxDuration: 180, // 180 seconds = 3 minutes max
+      const recording = cameraRef.current.recordAsync({
+        maxDuration: MAX_DURATION_SECONDS,
+        maxFileSize: MAX_FILE_BYTES,
+        progressUpdateInterval: 0.25,
       });
-      console.log('Video recorded:', video.uri);
-      // Navigate to next screen with video
-      // navigation.navigate('AddFilter', { videoUri: video.uri });
+
+      // stopRecording is a no-op until the native recorder has started.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      if ((stopRequestedRef.current || discardRef.current) && cameraRef.current) {
+        cameraRef.current.stopRecording();
+      }
+
+      const video = await recording;
+      temporaryVideoUri = video?.uri ?? null;
+
+      if (!video?.uri || discardRef.current || !mountedRef.current) {
+        if (temporaryVideoUri) deleteRecording(temporaryVideoUri);
+        temporaryVideoUri = null;
+        if (mountedRef.current && !discardRef.current && !video?.uri) {
+          Alert.alert('Recording too short', 'Let it record for a moment, then tap stop again.');
+        }
+        return;
+      }
+
+      const elapsed = Math.max(
+        recordedSecondsRef.current,
+        Math.round((Date.now() - startedAt) / 1000)
+      );
+      recordedSecondsRef.current = Math.min(MAX_DURATION_SECONDS, elapsed);
+
+      savedVideoUri = await persistRecording(video.uri);
+      if (savedVideoUri !== temporaryVideoUri && temporaryVideoUri) {
+        deleteRecording(temporaryVideoUri);
+      }
+      temporaryVideoUri = null;
+
+      if (!mountedRef.current || discardRef.current) {
+        deleteRecording(savedVideoUri);
+        savedVideoUri = null;
+        return;
+      }
+
+      navigation.navigate('RecordPreview', {
+        videoUri: savedVideoUri,
+        durationSeconds: recordedSecondsRef.current,
+        audioTrackId: selectedAudioIdRef.current,
+        audioTitle: selectedAudioTitleRef.current,
+      });
+      savedVideoUri = null;
     } catch (error) {
       console.error('Recording error:', error);
-      setIsRecording(false);
-    }
-  };
-
-  const handleRecord = async () => {
-    if (!cameraRef.current) return;
-
-    if (isRecording) {
-      // Stop recording
-      cameraRef.current.stopRecording();
-      setIsRecording(false);
-    } else {
-      // Start recording with timer or immediately
-      if (selectedTimer && selectedTimer > 0) {
-        setCountdown(selectedTimer);
-      } else {
-        startRecording();
+      if (temporaryVideoUri) deleteRecording(temporaryVideoUri);
+      if (savedVideoUri) deleteRecording(savedVideoUri);
+      if (mountedRef.current && !discardRef.current) {
+        Alert.alert('Recording failed', 'Could not record video. Try again on a device with a camera.');
+      }
+    } finally {
+      clearInterval(tick);
+      recordingLockRef.current = false;
+      stopRequestedRef.current = false;
+      if (mountedRef.current) {
+        setIsRecording(false);
+        setIsStopping(false);
       }
     }
+  }, [cameraReady, navigation]);
+
+  useEffect(() => {
+    startRecordingRef.current = startRecording;
+  }, [startRecording]);
+
+  const handleRecord = () => {
+    if (!cameraRef.current || isStopping) return;
+
+    if (countdown !== null) {
+      setCountdown(null);
+      return;
+    }
+
+    if (isRecording) {
+      stopRequestedRef.current = true;
+      setIsStopping(true);
+      cameraRef.current.stopRecording();
+      return;
+    }
+
+    if (!cameraReady) {
+      Alert.alert('Camera not ready', 'Wait for the preview, then try again.');
+      return;
+    }
+
+    if (selectedTimer && selectedTimer > 0) {
+      setCountdown(selectedTimer);
+      return;
+    }
+
+    void startRecording();
   };
 
   const handleUpload = async () => {
+    if (controlsLocked) return;
+
+    let savedVideoUri: string | null = null;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        mediaTypes: ['videos'],
         allowsEditing: true,
         quality: 1,
-        videoMaxDuration: 180, // 3 minutes max
+        videoMaxDuration: MAX_DURATION_SECONDS,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        console.log('Video selected:', result.assets[0].uri);
-        // Navigate to next screen with video
-        // navigation.navigate('AddFilter', { videoUri: result.assets[0].uri });
+      if (result.canceled || !result.assets[0]) return;
+
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > MAX_FILE_BYTES) {
+        Alert.alert('Video too large', 'Choose a video under 100 MB.');
+        return;
       }
+
+      const durationSeconds = Math.round((asset.duration ?? 0) / 1000);
+      if (durationSeconds > MAX_DURATION_SECONDS) {
+        Alert.alert('Video too long', 'Choose a video up to 3 minutes.');
+        return;
+      }
+
+      savedVideoUri = await persistRecording(asset.uri);
+      navigation.navigate('RecordPreview', {
+        videoUri: savedVideoUri,
+        durationSeconds,
+        audioTrackId: selectedAudioIdRef.current,
+        audioTitle: selectedAudioTitleRef.current,
+      });
+      savedVideoUri = null;
     } catch (error) {
+      if (savedVideoUri) deleteRecording(savedVideoUri);
       console.error('Upload error:', error);
       Alert.alert('Error', 'Failed to select video');
     }
   };
 
   const handleAddAudio = () => {
-    // Navigate to Add Audio screen
+    if (controlsLocked) return;
     setShowAudioSheet(true);
   };
 
   const handleFilter = () => {
+    if (controlsLocked) return;
     setShowFilterSheet(true);
   };
 
   const handleTimer = () => {
+    if (controlsLocked) return;
     setShowTimerSheet(true);
   };
 
   const handleEffect = () => {
-    Alert.alert('Effect', 'Effect functionality');
+    if (controlsLocked) return;
+    Alert.alert('Effect', 'Effects are preview-only and are not saved into the video file.');
   };
 
   const handleClose = () => {
+    if (isRecording) {
+      Alert.alert('Discard recording?', 'This video will not be saved.', [
+        { text: 'Keep recording', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            discardRef.current = true;
+            stopRequestedRef.current = true;
+            cameraRef.current?.stopRecording();
+            navigation.goBack();
+          },
+        },
+      ]);
+      return;
+    }
+
+    setCountdown(null);
     navigation.goBack();
   };
+
+  if (!permission || !micPermission) {
+    return <View style={styles.container} />;
+  }
+
+  if (needsCamera || needsMic) {
+    return (
+      <View style={[styles.container, styles.permissionContent]}>
+        <Text style={styles.permissionText}>
+          Camera and microphone access are required to record video.
+        </Text>
+        {needsCamera && (
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <Text style={styles.permissionButtonText}>Allow camera</Text>
+          </TouchableOpacity>
+        )}
+        {needsMic && (
+          <TouchableOpacity style={styles.permissionButton} onPress={requestMicPermission}>
+            <Text style={styles.permissionButtonText}>Allow microphone</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       
       {/* Camera View */}
-      <CameraView
-        ref={cameraRef}
-        style={styles.camera}
-        facing={facing}
-        flash={flash}
-        enableTorch={torch}
-      />
+      {isFocused ? (
+        <CameraView
+          ref={cameraRef}
+          style={styles.camera}
+          facing={facing}
+          mode="video"
+          videoQuality="720p"
+          flash={flash}
+          enableTorch={torch}
+          onCameraReady={() => setCameraReady(true)}
+          onMountError={() => setCameraReady(false)}
+          onRecordingProgress={(event) => {
+            const seconds = Math.min(MAX_DURATION_SECONDS, Math.floor(event.duration));
+            if (seconds < recordedSecondsRef.current) return;
+            recordedSecondsRef.current = seconds;
+            setRecordedSeconds(seconds);
+          }}
+        />
+      ) : null}
 
       {/* Filter Overlay - Apply filter effect on top of camera */}
       <FilterOverlay filter={selectedFilter} />
@@ -194,7 +406,7 @@ export default function CameraScreen() {
         </TouchableOpacity>
 
         {/* Recording Timer - shows when recording */}
-        <RecordingTimer isRecording={isRecording} />
+        <RecordingTimer isRecording={isRecording} durationSeconds={recordedSeconds} />
 
         {/* Add Audio Button - hide when recording */}
         {!isRecording && (
@@ -218,7 +430,7 @@ export default function CameraScreen() {
       </View>
 
       {/* Right Side Menu - Outside CameraView */}
-      <View style={styles.rightMenu}>
+      <View style={[styles.rightMenu, controlsLocked && styles.controlsLocked]} pointerEvents={controlsLocked ? 'none' : 'auto'}>
         {/* Flip Camera */}
         <TouchableOpacity style={styles.menuButton} onPress={toggleCameraFacing}>
           <MaterialCommunityIcons name="camera-flip" size={28} color="white" />
@@ -271,7 +483,7 @@ export default function CameraScreen() {
       {/* Bottom Controls - Outside CameraView */}
       <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 24) }]}>
         {/* Effect Button */}
-        <TouchableOpacity style={styles.effectButton} onPress={handleEffect}>
+        <TouchableOpacity style={[styles.effectButton, controlsLocked && styles.controlsLocked]} onPress={handleEffect} disabled={controlsLocked}>
           <MaterialCommunityIcons name="emoticon-happy-outline" size={28} color="white" />
           <Text style={styles.bottomButtonText}>Effect</Text>
         </TouchableOpacity>
@@ -285,7 +497,7 @@ export default function CameraScreen() {
         </TouchableOpacity>
 
         {/* Upload Button */}
-        <TouchableOpacity style={styles.uploadButton} onPress={handleUpload}>
+        <TouchableOpacity style={[styles.uploadButton, controlsLocked && styles.controlsLocked]} onPress={handleUpload} disabled={controlsLocked}>
           <MaterialIcons name="photo-library" size={28} color="white" />
           <Text style={styles.bottomButtonText}>Upload</Text>
         </TouchableOpacity>
@@ -326,11 +538,20 @@ const styles = StyleSheet.create({
   camera: {
     flex: 1,
   },
+  permissionContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+    gap: 16,
+  },
   permissionText: {
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  controlsLocked: {
+    opacity: 0.35,
   },
   permissionButton: {
     backgroundColor: '#FF3B5C',

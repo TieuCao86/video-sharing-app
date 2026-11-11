@@ -12,6 +12,12 @@ export type RootStackParamList = {
   S12: undefined;
   MainTabs: undefined;
   Camera: undefined;
+  RecordPreview: {
+    videoUri: string;
+    durationSeconds: number;
+    audioTrackId?: string;
+    audioTitle?: string;
+  };
   ReelDetail: {
     videoId: string;
   };
@@ -23,8 +29,9 @@ export type RootStackParamList = {
   };
   PostVideo: {
     videoUri: string;
-    audioUri?: string;
-    filterApplied?: string;
+    durationSeconds: number;
+    audioTrackId?: string;
+    audioTitle?: string;
   };
   VideoList?: {
     title: string;

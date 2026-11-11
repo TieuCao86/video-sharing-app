@@ -1,46 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface RecordingTimerProps {
   isRecording: boolean;
+  /** Seconds reported by the native recorder. */
+  durationSeconds: number;
 }
 
-export const RecordingTimer: React.FC<RecordingTimerProps> = ({ isRecording }) => {
-  const [seconds, setSeconds] = useState(0);
+const MAX_SECONDS = 180;
 
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval> | null = null;
-
-    if (isRecording) {
-      interval = setInterval(() => {
-        setSeconds(prev => {
-          if (prev >= 180) { // Max 180 seconds (3 minutes)
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000);
-    } else {
-      setSeconds(0);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRecording]);
-
+export const RecordingTimer: React.FC<RecordingTimerProps> = ({
+  isRecording,
+  durationSeconds,
+}) => {
   if (!isRecording) return null;
 
-  const formatTime = (totalSeconds: number) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  const capped = Math.min(MAX_SECONDS, Math.max(0, Math.floor(durationSeconds)));
+  const mins = Math.floor(capped / 60);
+  const secs = capped % 60;
+  const label = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
   return (
     <View style={styles.container}>
       <View style={styles.recordingDot} />
-      <Text style={styles.timeText}>{formatTime(seconds)}</Text>
+      <Text style={styles.timeText}>{label}</Text>
     </View>
   );
 };

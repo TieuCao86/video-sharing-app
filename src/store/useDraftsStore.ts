@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { MOCK_VIDEOS_ARRAY } from '../screens/reel/ReelDetailScreen';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteRecording } from '../utils/persistRecording';
+
+const LOCAL_DRAFTS_KEY = 'local-video-drafts';
 
 export interface DraftItem {
   id: string;
@@ -8,6 +11,11 @@ export interface DraftItem {
   updatedAt: string;
   duration?: string;
   videoUrl: string;
+  audioTrackId?: string;
+  audioTitle?: string;
+  description?: string;
+  topicId?: string;
+  visibility?: string;
 }
 
 export interface PublishedVideoItem {
@@ -19,57 +27,6 @@ export interface PublishedVideoItem {
   publishedAt: string;
 }
 
-const INITIAL_DRAFTS: DraftItem[] = [
-  {
-    id: 'draft-1',
-    thumbnail: 'https://picsum.photos/seed/draft1/300/400',
-    title: 'Summer dance routine',
-    updatedAt: '2 hours ago',
-    duration: '0:15',
-    videoUrl: MOCK_VIDEOS_ARRAY[0]?.url || 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Video/360429_small.mp4',
-  },
-  {
-    id: 'draft-2',
-    thumbnail: 'https://picsum.photos/seed/draft2/300/400',
-    title: 'Cooking recipe tutorial',
-    updatedAt: 'Yesterday',
-    duration: '0:30',
-    videoUrl: MOCK_VIDEOS_ARRAY[1]?.url || 'https://www.w3schools.com/html/mov_bbb.mp4',
-  },
-  {
-    id: 'draft-3',
-    thumbnail: 'https://picsum.photos/seed/draft3/300/400',
-    title: 'Travel memories preview',
-    updatedAt: '3 days ago',
-    duration: '0:45',
-    videoUrl: MOCK_VIDEOS_ARRAY[2]?.url || 'https://download.samplelib.com/mp4/sample-5s.mp4',
-  },
-  {
-    id: 'draft-4',
-    thumbnail: 'https://picsum.photos/seed/draft4/300/400',
-    title: 'Sunset timelapse draft',
-    updatedAt: 'Last week',
-    duration: '0:20',
-    videoUrl: MOCK_VIDEOS_ARRAY[3]?.url || 'https://download.samplelib.com/mp4/sample-10s.mp4',
-  },
-  {
-    id: 'draft-5',
-    thumbnail: 'https://picsum.photos/seed/draft5/300/400',
-    title: 'Guitar chord practice',
-    updatedAt: '2 weeks ago',
-    duration: '1:00',
-    videoUrl: MOCK_VIDEOS_ARRAY[4]?.url || 'https://download.samplelib.com/mp4/sample-15s.mp4',
-  },
-  {
-    id: 'draft-6',
-    thumbnail: 'https://picsum.photos/seed/draft6/300/400',
-    title: 'Cat play highlights',
-    updatedAt: '3 weeks ago',
-    duration: '0:18',
-    videoUrl: MOCK_VIDEOS_ARRAY[5]?.url || 'https://download.samplelib.com/mp4/sample-20s.mp4',
-  },
-];
-
 interface DraftsState {
   drafts: DraftItem[];
   publishedVideos: PublishedVideoItem[];
@@ -78,34 +35,139 @@ interface DraftsState {
 type Listener = () => void;
 
 let state: DraftsState = {
-  drafts: INITIAL_DRAFTS,
+  drafts: [],
   publishedVideos: [],
 };
 
 const listeners = new Set<Listener>();
+let persistQueue: Promise<void> = Promise.resolve();
+
+function isDraftItem(value: unknown): value is DraftItem {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<DraftItem>;
+  return (
+    typeof draft.id === 'string' &&
+    typeof draft.title === 'string' &&
+    typeof draft.updatedAt === 'string' &&
+    typeof draft.videoUrl === 'string' &&
+    typeof draft.thumbnail === 'string'
+  );
+}
+
+function isLocalDraft(draft: DraftItem) {
+  return draft.id.startsWith('local-');
+}
+
+function persistLocalDrafts(drafts: DraftItem[]): Promise<void> {
+  const localDrafts = drafts.filter(isLocalDraft);
+  const write = persistQueue.then(() =>
+    AsyncStorage.setItem(LOCAL_DRAFTS_KEY, JSON.stringify(localDrafts))
+  );
+  persistQueue = write.catch(() => undefined);
+  return write;
+}
+
+async function hydrateLocalDrafts() {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_DRAFTS_KEY);
+    if (!raw) return;
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      throw new Error('Saved drafts data is not a list.');
+    }
+
+    const savedDrafts = parsed.filter(isDraftItem).filter(isLocalDraft);
+    if (savedDrafts.length !== parsed.length) {
+      console.warn('Some invalid saved drafts were ignored.');
+    }
+
+    draftsStore.setState((previous) => {
+      const currentIds = new Set(previous.drafts.map((draft) => draft.id));
+      return {
+        drafts: [
+          ...previous.drafts,
+          ...savedDrafts.filter((draft) => !currentIds.has(draft.id)),
+        ],
+      };
+    });
+  } catch (error) {
+    console.warn('Failed to load local drafts:', error);
+  }
+}
+
+const hydrationPromise = hydrateLocalDrafts();
 
 export const draftsStore = {
   getState: (): DraftsState => state,
+
   setState: (
-    partial: Partial<DraftsState> | ((prev: DraftsState) => Partial<DraftsState>)
+    partial: Partial<DraftsState> | ((previous: DraftsState) => Partial<DraftsState>)
   ) => {
     const next = typeof partial === 'function' ? partial(state) : partial;
     state = { ...state, ...next };
     listeners.forEach((listener) => listener());
   },
+
   subscribe: (listener: Listener) => {
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
     };
   },
-  deleteDraft: (id: string) => {
-    draftsStore.setState((prev) => ({
-      drafts: prev.drafts.filter((d) => d.id !== id),
-    }));
+
+  addDraft: async (input: {
+    videoUrl: string;
+    durationSeconds?: number;
+    title?: string;
+    audioTrackId?: string;
+    audioTitle?: string;
+    description?: string;
+    topicId?: string;
+    visibility?: string;
+    thumbnail?: string;
+  }) => {
+    await hydrationPromise;
+
+    const total = Math.max(0, Math.floor(input.durationSeconds ?? 0));
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    const draft: DraftItem = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      thumbnail: input.thumbnail ?? '',
+      title: input.title?.trim() || 'Untitled recording',
+      updatedAt: 'Just now',
+      duration: `${minutes}:${seconds.toString().padStart(2, '0')}`,
+      videoUrl: input.videoUrl,
+      audioTrackId: input.audioTrackId,
+      audioTitle: input.audioTitle,
+      description: input.description,
+      topicId: input.topicId,
+      visibility: input.visibility,
+    };
+
+    const nextDrafts = [draft, ...state.drafts];
+    await persistLocalDrafts(nextDrafts);
+    draftsStore.setState({ drafts: nextDrafts });
+    return draft;
   },
+
+  deleteDraft: (id: string) => {
+    const target = state.drafts.find((draft) => draft.id === id);
+    if (target && isLocalDraft(target)) {
+      deleteRecording(target.videoUrl);
+      if (target.thumbnail) deleteRecording(target.thumbnail);
+    }
+
+    const nextDrafts = state.drafts.filter((draft) => draft.id !== id);
+    draftsStore.setState({ drafts: nextDrafts });
+    void persistLocalDrafts(nextDrafts).catch((error) => {
+      console.warn('Failed to save local drafts:', error);
+    });
+  },
+
   publishDraft: (id: string): PublishedVideoItem | null => {
-    const target = state.drafts.find((d) => d.id === id);
+    const target = state.drafts.find((draft) => draft.id === id);
     if (!target) return null;
 
     const published: PublishedVideoItem = {
@@ -117,11 +179,14 @@ export const draftsStore = {
       publishedAt: 'Just now',
     };
 
-    draftsStore.setState((prev) => ({
-      drafts: prev.drafts.filter((d) => d.id !== id),
-      publishedVideos: [published, ...prev.publishedVideos],
+    const nextDrafts = state.drafts.filter((draft) => draft.id !== id);
+    draftsStore.setState((previous) => ({
+      drafts: nextDrafts,
+      publishedVideos: [published, ...previous.publishedVideos],
     }));
-
+    void persistLocalDrafts(nextDrafts).catch((error) => {
+      console.warn('Failed to save local drafts:', error);
+    });
     return published;
   },
 };
@@ -140,4 +205,3 @@ export const useDraftsStore = () => {
     ...draftsStore,
   };
 };
-

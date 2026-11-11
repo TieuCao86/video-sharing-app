@@ -35,6 +35,86 @@ export interface VideoDetailItem {
   isLiked?: boolean;
 }
 
+export interface CreateVideoInput {
+  videoUri: string;
+  coverUri?: string;
+  title: string;
+  description: string;
+  topicId?: string;
+  visibility: 'PUBLIC' | 'PRIVATE';
+  audioTrackId?: string;
+}
+
+const VIDEO_FILE_EXTENSIONS = /\.(mp4|mov|m4v|webm)$/i;
+const IMAGE_FILE_EXTENSIONS = /\.(jpg|jpeg|png|webp|heic)$/i;
+
+async function uploadMediaFile(
+  bucket: 'Video' | 'Image',
+  ownerId: string,
+  uri: string,
+  fallbackExtension: string
+): Promise<string> {
+  const extension = uri.split('?')[0].match(bucket === 'Video' ? VIDEO_FILE_EXTENSIONS : IMAGE_FILE_EXTENSIONS)?.[1]
+    ?.toLowerCase() ?? fallbackExtension;
+  const contentType = bucket === 'Video'
+    ? extension === 'mov' ? 'video/quicktime' : 'video/mp4'
+    : extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg';
+  const path = `${ownerId}/posts/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  const response = await fetch(uri);
+  if (!response.ok) {
+    throw new Error(`Could not read the selected ${bucket === 'Video' ? 'video' : 'cover image'}.`);
+  }
+
+  const { error } = await supabase.storage
+    .from(bucket)
+    .upload(path, await response.arrayBuffer(), { contentType, upsert: false });
+  if (error) throw error;
+
+  return path;
+}
+
+/** Upload a recorded video and create its database post. */
+export async function createVideoPost(input: CreateVideoInput): Promise<void> {
+  const { data: authData, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (!authData.user) throw new Error('Please sign in before posting a video.');
+
+  const creatorId = (await resolveDbUserId(authData.user.id)) ?? authData.user.id;
+  let videoPath: string | undefined;
+  let coverPath: string | undefined;
+  try {
+    videoPath = await uploadMediaFile('Video', authData.user.id, input.videoUri, 'mp4');
+    if (input.coverUri) {
+      coverPath = await uploadMediaFile('Image', authData.user.id, input.coverUri, 'jpg');
+    }
+
+    const videoUrl = supabase.storage.from('Video').getPublicUrl(videoPath).data.publicUrl;
+    const coverUrl = coverPath
+      ? supabase.storage.from('Image').getPublicUrl(coverPath).data.publicUrl
+      : null;
+    const { error } = await supabase.from('videos').insert({
+      creator_id: creatorId,
+      title: input.title.trim(),
+      description: input.description.trim(),
+      visibility: input.visibility,
+      topic_id: input.topicId || null,
+      audio_track_id: input.audioTrackId && isUUID(input.audioTrackId) ? input.audioTrackId : null,
+      video_url: videoUrl,
+      cover_url: coverUrl,
+    });
+    if (error) throw error;
+  } catch (error) {
+    const cleanupResults = await Promise.all([
+      videoPath ? supabase.storage.from('Video').remove([videoPath]) : Promise.resolve({ error: null }),
+      coverPath ? supabase.storage.from('Image').remove([coverPath]) : Promise.resolve({ error: null }),
+    ]);
+    cleanupResults.forEach(({ error: cleanupError }) => {
+      if (cleanupError) console.warn('Failed to clean up uploaded post media:', cleanupError);
+    });
+    throw error;
+  }
+}
+
 function formatViews(num: number): string {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
@@ -359,4 +439,3 @@ export async function searchVideos(query: string): Promise<VideoDetailItem[]> {
 
   return (data || []).map((v: any) => mapVideoItem(v));
 }
-
