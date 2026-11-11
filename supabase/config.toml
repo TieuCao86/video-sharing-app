@@ -1,0 +1,4 @@
+project_id = "video-sharing-app"
+
+[functions.video-search]
+verify_jwt = true

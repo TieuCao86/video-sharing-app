@@ -20,7 +20,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 // Services Supabase
 import { supabase } from '../../utils/supabase';
 import {
-  searchVideos,
+  searchVideosWithStatus,
   getTrendingVideos,
   searchProfiles,
   searchAudioTracks,
@@ -79,6 +79,8 @@ export const SearchScreen: React.FC = () => {
   const [debouncedSearchText, setDebouncedSearchText] = useState(route.params?.query || '');
   const [isSearching, setIsSearching] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchFallbackNotice, setSearchFallbackNotice] = useState<string | null>(null);
 
   // Tab state (Trending, Accounts, Audio)
   const [activeTab, setActiveTab] = useState<TabType>('Trending');
@@ -178,6 +180,8 @@ export const SearchScreen: React.FC = () => {
     let isMounted = true;
     async function executeSearch() {
       setIsSearching(true);
+      setSearchError(null);
+      setSearchFallbackNotice(null);
       const query = debouncedSearchText.trim();
       try {
         if (!query) {
@@ -193,8 +197,11 @@ export const SearchScreen: React.FC = () => {
         } else {
           // Khi đang tìm kiếm theo query
           if (activeTab === 'Trending') {
-            const vids = await searchVideos(query);
-            if (isMounted) setVideos(vids);
+            const result = await searchVideosWithStatus(query);
+            if (isMounted) {
+              setVideos(result.videos);
+              setSearchFallbackNotice(result.warning || null);
+            }
           } else if (activeTab === 'Accounts') {
             const accs = await searchProfiles(query, user?.auth_id);
             if (isMounted) setAccounts(accs);
@@ -205,6 +212,12 @@ export const SearchScreen: React.FC = () => {
         }
       } catch (err) {
         console.error('Error executing search on Supabase:', err);
+        if (isMounted) {
+          setSearchError('Không thể tải kết quả tìm kiếm. Vui lòng thử lại.');
+          if (activeTab === 'Trending') setVideos([]);
+          else if (activeTab === 'Accounts') setAccounts([]);
+          else setAudios([]);
+        }
       } finally {
         if (isMounted) setIsSearching(false);
       }
@@ -566,6 +579,10 @@ export const SearchScreen: React.FC = () => {
               </View>
             ) : (
               <View style={{ minHeight: 300 }}>
+                {searchError && <Text style={styles.searchNotice}>{searchError}</Text>}
+                {activeTab === 'Trending' && searchFallbackNotice && (
+                  <Text style={styles.searchNotice}>{searchFallbackNotice}</Text>
+                )}
                 {/* TAB 1: TRENDING (VIDEOS TỪ SUPABASE) */}
                 {activeTab === 'Trending' && (
                   <>
@@ -895,6 +912,17 @@ const styles = StyleSheet.create({
     color: '#888888',
     marginTop: 12,
     textAlign: 'center',
+  },
+  searchNotice: {
+    color: '#8A5A00',
+    backgroundColor: '#FFF7E0',
+    borderRadius: 8,
+    fontSize: 13,
+    lineHeight: 18,
+    marginHorizontal: 14,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   resetFilterButton: {
     marginTop: 16,

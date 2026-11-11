@@ -46,6 +46,12 @@ export interface CreateVideoInput {
   audioTrackId?: string;
 }
 
+export interface VideoSearchResult {
+  videos: VideoDetailItem[];
+  mode: 'hybrid' | 'keyword';
+  warning?: string;
+}
+
 const VIDEO_FILE_EXTENSIONS = /\.(mp4|mov|m4v|webm)$/i;
 const IMAGE_FILE_EXTENSIONS = /\.(jpg|jpeg|png|webp|heic)$/i;
 
@@ -93,7 +99,7 @@ export async function createVideoPost(input: CreateVideoInput): Promise<void> {
     const coverUrl = coverPath
       ? supabase.storage.from('Image').getPublicUrl(coverPath).data.publicUrl
       : null;
-    const { error } = await supabase.from('videos').insert({
+    const { data: createdVideo, error } = await supabase.from('videos').insert({
       creator_id: creatorId,
       title: input.title.trim(),
       description: input.description.trim(),
@@ -102,8 +108,15 @@ export async function createVideoPost(input: CreateVideoInput): Promise<void> {
       audio_track_id: input.audioTrackId && isUUID(input.audioTrackId) ? input.audioTrackId : null,
       video_url: videoUrl,
       cover_url: coverUrl,
-    });
+    }).select('id').single();
     if (error) throw error;
+
+    const { error: indexingError } = await supabase.functions.invoke('video-search', {
+      body: { action: 'index-video', videoId: createdVideo.id },
+    });
+    if (indexingError) {
+      console.warn('Video was posted, but search indexing is queued for retry:', indexingError);
+    }
   } catch (error) {
     const cleanupResults = await Promise.all([
       videoPath ? supabase.storage.from('Video').remove([videoPath]) : Promise.resolve({ error: null }),
@@ -427,25 +440,101 @@ export async function getUserDrafts(creatorId: string): Promise<VideoDetailItem[
   return (data || []).map((v: any) => mapVideoItem(v));
 }
 
-/**
- * Tìm kiếm video theo từ khóa tiêu đề hoặc caption (S02)
- */
-export async function searchVideos(query: string): Promise<VideoDetailItem[]> {
-  const { data, error } = await supabase
-    .from('videos')
-    .select(`
-      *,
-      profiles:creator_id (id, display_name, avatar_url),
-      audio_tracks:audio_track_id (id, title, artist, audio_url)
-    `)
-    .eq('visibility', 'PUBLIC')
-    .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
-    .order('views_count', { ascending: false });
+const VIDEO_SEARCH_SELECT = `
+  *,
+  profiles:creator_id (id, display_name, avatar_url),
+  audio_tracks:audio_track_id (id, title, artist, audio_url)
+`;
 
-  if (error) {
-    console.error('Error searching videos:', error);
-    throw error;
+class NonFallbackSearchError extends Error {}
+
+async function searchVideosByKeyword(query: string): Promise<VideoDetailItem[]> {
+  const escapedQuery = query.replace(/[\\%_]/g, '\\$&');
+  const pattern = `%${escapedQuery}%`;
+  const [titleResult, descriptionResult] = await Promise.all([
+    supabase
+      .from('videos')
+      .select(VIDEO_SEARCH_SELECT)
+      .eq('visibility', 'PUBLIC')
+      .ilike('title', pattern)
+      .order('views_count', { ascending: false })
+      .limit(30),
+    supabase
+      .from('videos')
+      .select(VIDEO_SEARCH_SELECT)
+      .eq('visibility', 'PUBLIC')
+      .ilike('description', pattern)
+      .order('views_count', { ascending: false })
+      .limit(30),
+  ]);
+
+  if (titleResult.error) throw titleResult.error;
+  if (descriptionResult.error) throw descriptionResult.error;
+
+  const videosById = new Map<string, any>();
+  for (const video of [...(titleResult.data || []), ...(descriptionResult.data || [])]) {
+    videosById.set(video.id, video);
   }
 
-  return (data || []).map((v: any) => mapVideoItem(v));
+  return Array.from(videosById.values())
+    .sort((a, b) => (b.views_count || 0) - (a.views_count || 0))
+    .map((video) => mapVideoItem(video));
+}
+
+/** Search public videos with semantic + keyword retrieval and an explicit keyword fallback. */
+export async function searchVideosWithStatus(query: string): Promise<VideoSearchResult> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return { videos: [], mode: 'hybrid' };
+  if (trimmedQuery.length > 300) throw new Error('Search query is too long.');
+
+  try {
+    const { data, error } = await supabase.functions.invoke<{ videoIds?: unknown }>('video-search', {
+      body: { action: 'search', query: trimmedQuery },
+    });
+    if (error) {
+      const response = error.context;
+      if (response instanceof Response && [400, 401, 403, 429].includes(response.status)) {
+        throw new NonFallbackSearchError(response.status === 429
+          ? 'Search limit reached. Please try again in a minute.'
+          : 'The search request could not be completed.');
+      }
+      throw error;
+    }
+
+    if (!Array.isArray(data?.videoIds) || !data.videoIds.every((id) => typeof id === 'string')) {
+      throw new Error('Semantic search returned an invalid response.');
+    }
+
+    const videoIds = Array.from(new Set(data.videoIds));
+    if (videoIds.length === 0) return { videos: [], mode: 'hybrid' };
+
+    const { data: videos, error: videosError } = await supabase
+      .from('videos')
+      .select(VIDEO_SEARCH_SELECT)
+      .eq('visibility', 'PUBLIC')
+      .in('id', videoIds);
+    if (videosError) throw videosError;
+
+    const videosById = new Map((videos || []).map((video: any) => [video.id, video]));
+    return {
+      videos: videoIds
+        .map((id) => videosById.get(id))
+        .filter((video): video is NonNullable<typeof video> => Boolean(video))
+        .map((video) => mapVideoItem(video)),
+      mode: 'hybrid',
+    };
+  } catch (semanticError) {
+    if (semanticError instanceof NonFallbackSearchError) throw semanticError;
+    console.warn('Semantic video search failed; falling back to keyword search:', semanticError);
+    return {
+      videos: await searchVideosByKeyword(trimmedQuery),
+      mode: 'keyword',
+      warning: 'Tìm kiếm ngữ nghĩa hiện không khả dụng; đang hiển thị kết quả khớp từ khóa.',
+    };
+  }
+}
+
+/** Compatibility wrapper for callers that only need the matching video list. */
+export async function searchVideos(query: string): Promise<VideoDetailItem[]> {
+  return (await searchVideosWithStatus(query)).videos;
 }
