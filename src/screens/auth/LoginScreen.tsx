@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { CustomButton } from "../../components/buttons/CustomButton";
+import { BrandLogo } from "../../components/common/BrandLogo";
 import { loginWithEmail } from "../../services/authService";
 
 interface LoginScreenProps {
@@ -65,14 +66,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         style={styles.content}
       >
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Ionicons
-              name="play"
-              size={28}
-              color="#FF2D55"
-              style={{ marginLeft: 3 }}
-            />
-          </View>
+          <BrandLogo width={140} height={58} />
         </View>
 
         <Text style={styles.title}>LOGIN</Text>
@@ -173,14 +167,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: "center",
     marginBottom: 20,
-  },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF0F3",
-    justifyContent: "center",
-    alignItems: "center",
   },
   title: {
     fontSize: 22,

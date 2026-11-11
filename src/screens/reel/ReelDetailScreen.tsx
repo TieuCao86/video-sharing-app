@@ -17,10 +17,12 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoItem } from "../../components/VideoItem";
 import { authStore, useAuthStore } from "../../store/useAuthStore";
 import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
+import { RootStackParamList } from "../../types/navigation";
 
 // Services kết nối Supabase
 import {
@@ -74,15 +76,9 @@ export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   }
 ];
 
-type RouteParams = {
-  ReelDetail: {
-    videoId: string;
-  };
-};
-
 export const ReelDetailScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
   const { checkAuth, user, isLoggedIn } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -345,6 +341,7 @@ export const ReelDetailScreen: React.FC = () => {
             video={{
               id: item.id,
               url: item.videoUrl,
+              creatorId: item.creator.id,
               creator: item.creator.name,
               creatorAvatar: item.creator.avatar,
               canFollow: !!item.creator.id && item.creator.id !== currentDbUserId,
@@ -361,6 +358,11 @@ export const ReelDetailScreen: React.FC = () => {
             onCommentPress={() => handleOpenComments(item.id)}
             onFollowPress={() => handleToggleFollow(item.creator.id)}
             isFollowLoading={followingCreatorIds.has(item.creator.id)}
+            onCreatorPress={() => {
+              if (item.creator.id) {
+                navigation.push('UserProfile', { userId: item.creator.id });
+              }
+            }}
           />
         )}
       />

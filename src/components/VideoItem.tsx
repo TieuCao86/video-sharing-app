@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface VideoData {
   id: string;
   url: string;
+  creatorId: string;
   creator: string;
   creatorAvatar: string;
   canFollow: boolean;
@@ -33,6 +34,7 @@ interface VideoItemProps {
   commentsCount: number;
   onFollowPress: () => void;
   isFollowLoading: boolean;
+  onCreatorPress: () => void;
 }
 
 export const VideoItem: React.FC<VideoItemProps> = ({
@@ -46,6 +48,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   commentsCount,
   onFollowPress,
   isFollowLoading,
+  onCreatorPress,
 }) => {
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -143,10 +146,18 @@ export const VideoItem: React.FC<VideoItemProps> = ({
       {/* Right Actions (Like, Comment, Share) */}
       <View style={[styles.rightActionsContainer, { bottom: 60 + bottomOffset }]}>
         <View style={styles.avatarWrapper}>
-          <Image
-            source={{ uri: video.creatorAvatar }}
-            style={styles.creatorAvatar}
-          />
+          <TouchableOpacity
+            onPress={onCreatorPress}
+            disabled={!video.creatorId}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Open @${video.creator} profile`}
+          >
+            <Image
+              source={{ uri: video.creatorAvatar }}
+              style={styles.creatorAvatar}
+            />
+          </TouchableOpacity>
           {video.canFollow ? (
             <TouchableOpacity
               style={[styles.plusBadge, video.isFollowing && styles.followingBadge]}
@@ -197,7 +208,15 @@ export const VideoItem: React.FC<VideoItemProps> = ({
 
       {/* Bottom Info (Creator, Caption, Music) */}
       <View style={[styles.bottomInfoContainer, { bottom: 12 + bottomOffset }]}>
-        <Text style={styles.creatorName}>@{video.creator}</Text>
+        <TouchableOpacity
+          onPress={onCreatorPress}
+          disabled={!video.creatorId}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`Open @${video.creator} profile`}
+        >
+          <Text style={styles.creatorName}>@{video.creator}</Text>
+        </TouchableOpacity>
         <Text style={styles.caption} numberOfLines={2}>{video.caption}</Text>
 
         <View style={styles.audioRow}>
