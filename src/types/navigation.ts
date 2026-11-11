@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+
 export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
@@ -10,7 +12,7 @@ export type RootStackParamList = {
     displayName?: string;
   };
   S12: undefined;
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   Camera: undefined;
   RecordPreview: {
     videoUri: string;

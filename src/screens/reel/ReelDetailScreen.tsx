@@ -379,7 +379,11 @@ export const ReelDetailScreen: React.FC = () => {
             isFollowLoading={followingCreatorIds.has(item.creator.id)}
             onCreatorPress={() => {
               if (item.creator.id) {
-                navigation.push('UserProfile', { userId: item.creator.id });
+                if (item.creator.id === currentDbUserId) {
+                  navigation.navigate('MainTabs', { screen: 'ProfileTab' });
+                } else {
+                  navigation.push('UserProfile', { userId: item.creator.id });
+                }
               }
             }}
           />
