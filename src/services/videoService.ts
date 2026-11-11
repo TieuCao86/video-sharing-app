@@ -198,47 +198,61 @@ export async function toggleLikeVideo(userId: string, videoId: string): Promise<
   // Resolve sang users.id đảm bảo đúng FK của bảng likes
   const dbUserId = (await resolveDbUserId(userId)) ?? userId;
 
-  const { data } = await supabase
+  const { data, error: readError } = await supabase
     .from('likes')
-    .select('*')
+    .select('video_id')
     .eq('user_id', dbUserId)
     .eq('video_id', videoId)
     .maybeSingle();
 
+  if (readError) throw readError;
+
+  let liked = false;
+  let delta = 0;
+
   if (data) {
-    // Đã like → bỏ like
     const { error } = await supabase
       .from('likes')
       .delete()
       .eq('user_id', dbUserId)
       .eq('video_id', videoId);
     if (error) throw error;
-    return false;
+    liked = false;
+    delta = -1;
   } else {
-    // Chưa like → thêm like
     const { error } = await supabase
       .from('likes')
       .insert({ user_id: dbUserId, video_id: videoId });
-    if (error) throw error;
-
-    // Lấy creator của video và tạo notification (fire-and-forget)
-    supabase
-      .from('videos')
-      .select('creator_id, users:creator_id(id)')
-      .eq('id', videoId)
-      .maybeSingle()
-      .then(async ({ data: videoData }) => {
-        if (!videoData) return;
-        const creatorDbId: string | undefined =
-          (videoData as any).users?.id ||
-          (await resolveDbUserId(videoData.creator_id));
-        if (creatorDbId && creatorDbId !== dbUserId) {
-          createLikeNotification(dbUserId, creatorDbId, videoId).catch(() => {});
-        }
-      });
-
-    return true;
+    if (error && error.code !== '23505') throw error;
+    liked = true;
+    delta = error?.code === '23505' ? 0 : 1;
   }
+
+  const { data: video, error: videoError } = await supabase
+    .from('videos')
+    .select('likes_count, creator_id')
+    .eq('id', videoId)
+    .maybeSingle();
+
+  if (videoError) throw videoError;
+
+  if (video && delta !== 0) {
+    const nextCount = Math.max((video.likes_count || 0) + delta, 0);
+    const { error: updateError } = await supabase
+      .from('videos')
+      .update({ likes_count: nextCount })
+      .eq('id', videoId);
+    if (updateError) throw updateError;
+  }
+
+  if (liked && video?.creator_id) {
+    const creatorDbId = (await resolveDbUserId(video.creator_id)) ?? video.creator_id;
+    if (creatorDbId && creatorDbId !== dbUserId) {
+      void createLikeNotification(dbUserId, creatorDbId, videoId);
+    }
+  }
+
+  return liked;
 }
 
 /**

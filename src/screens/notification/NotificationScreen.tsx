@@ -100,6 +100,7 @@ export const NotificationScreen: React.FC = () => {
   const renderBadgeIcon = (type: NotificationItem['type']) => {
     switch (type) {
       case 'like':
+      case 'comment_like':
         return (
           <View style={[styles.typeBadge, { backgroundColor: '#FF2442' }]}>
             <Ionicons name="heart" size={10} color="#FFFFFF" />

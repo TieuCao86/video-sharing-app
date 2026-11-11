@@ -2,7 +2,7 @@ import { supabase } from '../utils/supabase';
 
 export interface NotificationItem {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'mention';
+  type: 'like' | 'comment' | 'comment_like' | 'follow' | 'mention';
   message: string;
   isRead: boolean;
   createdAt: string;
@@ -83,6 +83,9 @@ export async function getNotifications(recipientId: string): Promise<Notificatio
         case 'like':
           msg = 'đã thích video của bạn';
           break;
+        case 'comment_like':
+          msg = 'đã thích bình luận của bạn';
+          break;
         case 'comment':
           msg = 'đã bình luận về video của bạn';
           break;
@@ -147,11 +150,77 @@ export async function markAllNotificationsAsRead(recipientId: string): Promise<v
 }
 
 /**
- * Tạo thông báo like khi người dùng thả tim vào video
- * @param senderId    - users.id (db id) của người thả tim
- * @param recipientId - users.id (db id) của chủ video
- * @param videoId     - id của video được like
+ * Tạo thông báo khi người dùng bình luận video của người khác
+ * @param senderId    - users.id của người bình luận
+ * @param recipientId - users.id của chủ video
+ * @param videoId     - id video được bình luận
  */
+export async function createCommentNotification(
+  senderId: string,
+  recipientId: string,
+  videoId: string
+): Promise<void> {
+  try {
+    const { error } = await supabase.from('notifications').insert({
+      type: 'comment',
+      sender_id: senderId,
+      recipient_id: recipientId,
+      video_id: videoId,
+      is_read: false,
+    });
+
+    if (error) {
+      console.error('[createCommentNotification] insert error:', error);
+    }
+  } catch (err) {
+    console.error('[createCommentNotification] exception:', err);
+  }
+}
+
+/**
+ * Báo cho chủ bình luận khi có người thích bình luận của họ.
+ * Không gửi nếu người thích chính là chủ bình luận.
+ */
+export async function createCommentLikeNotification(
+  senderId: string,
+  recipientId: string,
+  videoId: string
+): Promise<void> {
+  if (!senderId || !recipientId || senderId === recipientId) return;
+
+  try {
+    const payload = {
+      sender_id: senderId,
+      recipient_id: recipientId,
+      video_id: videoId,
+      is_read: false,
+    };
+
+    const { error } = await supabase.from('notifications').insert({
+      ...payload,
+      type: 'comment_like',
+    });
+
+    // Schema cũ chỉ cho phép like/comment/follow/mention.
+    if (error?.code === '23514') {
+      const fallback = await supabase.from('notifications').insert({
+        ...payload,
+        type: 'like',
+      });
+      if (fallback.error) {
+        console.error('[createCommentLikeNotification] fallback error:', fallback.error);
+      }
+      return;
+    }
+
+    if (error) {
+      console.error('[createCommentLikeNotification] insert error:', error);
+    }
+  } catch (err) {
+    console.error('[createCommentLikeNotification] exception:', err);
+  }
+}
+
 export async function createLikeNotification(
   senderId: string,
   recipientId: string,
