@@ -4,7 +4,12 @@
     "slug": "video-sharing-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/8T-logo.png",
+    "splash": {
+      "image": "./assets/8T-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -12,15 +17,14 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/8T-logo.png",
+        "monochromeImage": "./assets/8T-logo.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.videosharingapp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/8T-logo.png"
     },
     "plugins": [
       "expo-dev-client",

@@ -14,7 +14,7 @@ import { StoryList } from '../../components/cards/StoryList';
 import { BrowseTopics } from '../../components/cards/BrowseTopics';
 import { VideoCard } from '../../components/cards/VideoCard';
 import { AudioCard } from '../../components/AudioCard';
-import { Ionicons } from '@expo/vector-icons';
+import { BrandLogo } from '../../components/common/BrandLogo';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 
@@ -107,8 +107,8 @@ export const HomeScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Ionicons name="play-circle" size={26} color="#FF2442" />
-          <Text style={styles.headerText}>Video Sharing App</Text>
+          <BrandLogo width={90} height={38} />
+          <Text style={styles.headerText}>8ThreadsTV</Text>
         </View>
       </View>
 

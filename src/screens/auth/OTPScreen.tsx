@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { CustomButton } from "../../components/buttons/CustomButton";
+import { BrandLogo } from "../../components/common/BrandLogo";
 import { verifyOtpCode, resendOtpCode } from "../../services/authService";
 
 interface OTPScreenProps {
@@ -142,13 +143,7 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({
         </TouchableOpacity>
 
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Ionicons
-              name="mail-unread-outline"
-              size={30}
-              color="#FF2D55"
-            />
-          </View>
+          <BrandLogo width={140} height={58} />
         </View>
 
         <Text style={styles.title}>OTP VERIFICATION</Text>
@@ -225,14 +220,6 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   logoContainer: { alignItems: "center", marginBottom: 16 },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF0F3",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   title: {
     fontSize: 22,
     fontWeight: "800",
