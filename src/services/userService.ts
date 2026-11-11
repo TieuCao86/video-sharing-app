@@ -237,7 +237,7 @@ export async function getFollowCounts(
  * Theo dõi hoặc Bỏ theo dõi tài khoản (UC20)
  */
 export async function toggleFollowUser(authId: string, followingId: string): Promise<boolean> {
-  const followerId = await resolveDbUserId(authId);
+  const followerId = (await resolveDbUserId(authId)) || (isUUID(authId) ? authId : undefined);
   if (!followerId) throw new Error('Không tìm thấy hồ sơ người dùng hiện tại (users.auth_id chưa được gán).');
   if (followerId === followingId) throw new Error('Không thể tự theo dõi chính mình.');
 
@@ -340,4 +340,3 @@ export async function getFollowList(
     return [];
   }
 }
-

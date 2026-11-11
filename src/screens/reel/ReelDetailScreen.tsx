@@ -30,6 +30,7 @@ import {
   getCommentsByVideoId,
   addComment,
   toggleLikeComment,
+  toggleFollowUser,
   VideoDetailItem,
   CommentItem,
 } from "../../services";
@@ -83,7 +84,7 @@ export const ReelDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'ReelDetail'>>();
   const flatListRef = useRef<FlatList>(null);
-  const { checkAuth, user } = useAuthStore();
+  const { checkAuth, user, isLoggedIn } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   
@@ -92,6 +93,7 @@ export const ReelDetailScreen: React.FC = () => {
   const currentDbUserId = user?.id ?? null;
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
+  const [followingCreatorIds, setFollowingCreatorIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -108,7 +110,10 @@ export const ReelDetailScreen: React.FC = () => {
   useEffect(() => {
     async function loadVideos() {
       try {
-        const fetchedVideos = await getTrendingVideos(20, currentDbUserId ?? undefined);
+        const fetchedVideos = await getTrendingVideos(
+          20,
+          isLoggedIn ? currentDbUserId ?? undefined : undefined
+        );
         setVideos(fetchedVideos);
 
         // Tìm vị trí của video được nhấn từ danh sách
@@ -131,7 +136,7 @@ export const ReelDetailScreen: React.FC = () => {
       }
     }
     loadVideos();
-  }, [initialVideoId, currentDbUserId]);
+  }, [initialVideoId, currentDbUserId, isLoggedIn]);
 
   const currentVideo = videos[currentIndex];
 
@@ -259,6 +264,39 @@ export const ReelDetailScreen: React.FC = () => {
     });
   };
 
+  const handleToggleFollow = (creatorId: string) => {
+    if (!creatorId || followingCreatorIds.has(creatorId)) return;
+
+    checkAuth(() => {
+      if (!user.auth_id) {
+        Alert.alert('Không thể theo dõi', 'Không tìm thấy tài khoản đăng nhập. Vui lòng đăng nhập lại.');
+        return;
+      }
+
+      setFollowingCreatorIds((prev) => new Set(prev).add(creatorId));
+      toggleFollowUser(user.auth_id, creatorId)
+        .then((isFollowing) => {
+          setVideos((prev) =>
+            prev.map((video) =>
+              video.creator.id === creatorId
+                ? { ...video, creator: { ...video.creator, isFollowing } }
+                : video
+            )
+          );
+        })
+        .catch((err: any) => {
+          Alert.alert('Không thể cập nhật theo dõi', err?.message || 'Vui lòng thử lại.');
+        })
+        .finally(() => {
+          setFollowingCreatorIds((prev) => {
+            const next = new Set(prev);
+            next.delete(creatorId);
+            return next;
+          });
+        });
+    });
+  };
+
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       setCurrentIndex(viewableItems[0].index || 0);
@@ -308,6 +346,9 @@ export const ReelDetailScreen: React.FC = () => {
               id: item.id,
               url: item.videoUrl,
               creator: item.creator.name,
+              creatorAvatar: item.creator.avatar,
+              canFollow: !!item.creator.id && item.creator.id !== currentDbUserId,
+              isFollowing: !!item.creator.isFollowing,
               caption: item.caption,
               audio: item.audioTrack?.title || 'Original Sound',
             }}
@@ -318,6 +359,8 @@ export const ReelDetailScreen: React.FC = () => {
             commentsCount={item.commentsCount}
             onLikePress={handleToggleLike}
             onCommentPress={() => handleOpenComments(item.id)}
+            onFollowPress={() => handleToggleFollow(item.creator.id)}
+            isFollowLoading={followingCreatorIds.has(item.creator.id)}
           />
         )}
       />
