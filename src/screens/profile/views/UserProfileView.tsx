@@ -30,6 +30,7 @@ import {
   VideoDetailItem,
   UserProfileItem,
 } from '../../../services';
+import { getHiddenSuggestionIds, hideSuggestion } from '../../../services/suggestionService';
 import { Ionicons } from '@expo/vector-icons';
 
 interface UserProfileViewProps {
@@ -120,11 +121,26 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
     });
   };
 
+    // TC64 – nạp danh sách gợi ý đã ẩn của người đang xem (lưu bền trong AsyncStorage)
+  useEffect(() => {
+    let active = true;
+    getHiddenSuggestionIds(currentUserId).then((ids) => {
+      if (active) setDismissedUserIds(new Set(ids));
+    });
+    return () => {
+      active = false;
+    };
+  }, [currentUserId]);
+
   const handleDismissSuggestion = (id: string) => {
     setDismissedUserIds((prev) => {
       const updated = new Set(prev);
       updated.add(id);
       return updated;
+    });
+    // Lưu lại để mở lại màn hình / khởi động lại app gợi ý này không xuất hiện nữa
+    void hideSuggestion(currentUserId, id).catch((error) => {
+      console.warn('Failed to save hidden suggestion:', error);
     });
   };
 
