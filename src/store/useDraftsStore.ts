@@ -23,7 +23,6 @@ export interface DraftItem {
   description?: string;
   topicId?: string;
   visibility?: string;
-  durationSeconds?: number;
   ownerId?: string;
 }
 
@@ -181,7 +180,7 @@ export const draftsStore = {
     const minutes = Math.floor(total / 60);
     const seconds = total % 60;
     const draft: DraftItem = {
-      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: replacing?.id ?? `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       thumbnail: input.thumbnail ?? '',
       title: input.title?.trim() || 'Untitled recording',
       updatedAt: 'Just now',
@@ -194,7 +193,6 @@ export const draftsStore = {
       description: input.description,
       topicId: input.topicId,
       visibility: input.visibility,
-      durationSeconds: total,
       ownerId: owner,
     };
 
