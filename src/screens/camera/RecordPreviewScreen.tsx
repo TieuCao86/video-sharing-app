@@ -23,7 +23,7 @@ export default function RecordPreviewScreen() {
   const route = useRoute<PreviewRoute>();
   const insets = useSafeAreaInsets();
   const { addDraft } = useDraftsStore();
-  const { videoUri, durationSeconds, audioTrackId, audioTitle } = route.params;
+  const { videoUri, durationSeconds, fileSizeBytes, audioTrackId, audioTitle } = route.params;
   const [saving, setSaving] = useState(false);
   const keptRef = useRef(false);
   const savingRef = useRef(false);
@@ -68,6 +68,7 @@ export default function RecordPreviewScreen() {
       StackActions.replace('PostVideo', {
         videoUri,
         durationSeconds,
+        fileSizeBytes,
         audioTrackId,
         audioTitle,
       })
@@ -83,6 +84,7 @@ export default function RecordPreviewScreen() {
       await addDraft({
         videoUrl: videoUri,
         durationSeconds,
+        fileSizeBytes,
         title: 'Untitled recording',
         audioTrackId,
         audioTitle,

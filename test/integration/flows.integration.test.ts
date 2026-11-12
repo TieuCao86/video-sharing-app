@@ -194,7 +194,7 @@ describe('Luồng video: danh sách, quyền riêng tư, tìm kiếm, đăng vid
     await verifyOtpCode('poster@example.com', auth.otpCode, 'Poster');
     const login = await loginWithEmail('poster@example.com', 'Trung1234');
     (global as any).fetch = jest.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(16) }));
-    await createVideoPost({ videoUri: 'file:///rec/clip.mp4', title: '  Hoàng hôn  ', description: ' đẹp ', visibility: 'PUBLIC' });
+    await createVideoPost({ videoUri: 'file:///rec/clip.mp4', fileSizeBytes: 16, durationSeconds: 60, title: '  Hoàng hôn  ', description: ' đẹp ', visibility: 'PUBLIC' });
     expect([...storage.files.keys()][0]).toMatch(/^Video\/.+\/posts\/\d+-\w+\.mp4$/);
     const mine = await getUserVideos(login.user!.id);
     expect(mine).toHaveLength(1);

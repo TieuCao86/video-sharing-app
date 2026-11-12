@@ -678,9 +678,19 @@ export async function updateProfile(·
   userId: string,·
   updates: { display_name?: string; bio?: string; avatar_url?: string }·
 ): Promise&lt;boolean&gt; {·
+  const sanitize = (value: string) =&gt; value·
+    .replace(/&lt;!--[\\s\\S]*?--&gt;/g, '')·
+    .replace(/&lt;\\/?[a-z][^&gt;]*&gt;/gi, '')·
+    .replace(/[\\u0000-\\u0008\\u000B\\u000C-\\u001F\\u007F]/g, '')·
+    .trim();·
+  const safeUpdates = {·
+    ...updates,·
+    ...(updates.bio !== undefined ? { bio: sanitize(updates.bio) } : {}),·
+    ...(updates.display_name !== undefined ? { display_name: sanitize(updates.display_name) } : {}),·
+  };·
   const { data, error, status } = await supabase·
     .from('users')·
-    .update({ ...updates, updated_at: new Date().toISOString() })·
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })·
     .eq('auth_id', userId)·
     .select();···
   console.log('[updateProfile]', { userId, status, rows: data?.length, error });···
@@ -1066,11 +1076,9 @@ Received: "0000009c-0000-4000-8000-00000000009c"
 + Received  + 1
 
   Object {
-    "manHinhChanRong": true,
-    "maxLength100": true,
-    "nhapDeTrong": true,
--   "serverChanTieuDeRong": true,
-+   "serverChanTieuDeRong": false,
+-   "message": "Vui lòng nhập Email hợp lệ.",
++   "message": "Vui lòng nhập email hợp lệ (tối đa 254 ký tự).",
+    "success": false,
   }
     at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc\unit.doc.test.ts:108:8)
     at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC10 – Mô tả tối đa 500 ký tự</div><div class="test-status">failed</div><div class="test-duration">0.006s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBeLessThanOrEqual(expected)

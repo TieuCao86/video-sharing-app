@@ -15,6 +15,8 @@ export interface DraftItem {
   title: string;
   updatedAt: string;
   duration?: string;
+  durationSeconds?: number;
+  fileSizeBytes?: number;
   videoUrl: string;
   audioTrackId?: string;
   audioTitle?: string;
@@ -154,6 +156,7 @@ export const draftsStore = {
   addDraft: async (input: {
     videoUrl: string;
     durationSeconds?: number;
+    fileSizeBytes?: number;
     title?: string;
     audioTrackId?: string;
     audioTitle?: string;
@@ -178,13 +181,13 @@ export const draftsStore = {
     const minutes = Math.floor(total / 60);
     const seconds = total % 60;
     const draft: DraftItem = {
-      id:
-        replacing?.id ??
-        `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      thumbnail: input.thumbnail ?? "",
-      title: input.title?.trim() || "Untitled recording",
-      updatedAt: "Just now",
-      duration: `${minutes}:${seconds.toString().padStart(2, "0")}`,
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      thumbnail: input.thumbnail ?? '',
+      title: input.title?.trim() || 'Untitled recording',
+      updatedAt: 'Just now',
+      duration: `${minutes}:${seconds.toString().padStart(2, '0')}`,
+      durationSeconds: total,
+      fileSizeBytes: input.fileSizeBytes,
       videoUrl: input.videoUrl,
       audioTrackId: input.audioTrackId,
       audioTitle: input.audioTitle,

@@ -90,7 +90,8 @@ describe('A. Unit Test', () => {
     void user;
     const results: Record<string, boolean> = {};
     for (const uri of ['file:///a.avi', 'file:///a_101MB.mp4', 'file:///a_181s.mp4']) {
-      try { await createVideoPost({ videoUri: uri, title: 'T', description: '', visibility: 'PUBLIC' }); results[uri] = true; } catch { results[uri] = false; }
+      const invalidMetadata = { fileSizeBytes: uri.includes('101MB') ? 101 * 1024 * 1024 : 10, durationSeconds: uri.includes('181s') ? 181 : 60 };
+      try { await createVideoPost({ videoUri: uri, ...invalidMetadata, title: 'T', description: '', visibility: 'PUBLIC' }); results[uri] = true; } catch { results[uri] = false; }
     }
     const camera = src('screens/camera/CameraScreen.tsx') + src('screens/camera/PostVideoScreen.tsx');
     expect({ ...results, kiemTraDungLuong: /100\s*\*\s*1024\s*\*\s*1024|fileSize/.test(camera) })
@@ -101,11 +102,17 @@ describe('A. Unit Test', () => {
     const post = src('screens/camera/PostVideoScreen.tsx');
     const draft = await draftsStore.addDraft({ videoUrl: 'file:///d.mp4', title: '' });
     let serverChanTieuDeRong = true;
-    try { await createVideoPost({ videoUri: 'file:///a.mp4', title: '', description: '', visibility: 'PUBLIC' }); serverChanTieuDeRong = false; } catch { /* bị chặn */ }
+    try { await createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 10, durationSeconds: 60, title: '', description: '', visibility: 'PUBLIC' }); serverChanTieuDeRong = false; } catch { /* bị chặn */ }
+    let serverChanTieuDe101 = true;
+    try { await createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 10, durationSeconds: 60, title: 'T'.repeat(101), description: '', visibility: 'PUBLIC' }); serverChanTieuDe101 = false; } catch { /* bị chặn */ }
+    await createVideoPost({ videoUri: 'file:///one.mp4', fileSizeBytes: 10, durationSeconds: 60, title: 'T', description: '', visibility: 'PUBLIC' });
+    await createVideoPost({ videoUri: 'file:///hundred.mp4', fileSizeBytes: 10, durationSeconds: 60, title: 'T'.repeat(100), description: '', visibility: 'PUBLIC' });
     expect({
-      manHinhChanRong: /if \(!title\.trim\(\)\)/.test(post), maxLength100: /maxLength=\{100\}/.test(post),
-      nhapDeTrong: !!draft.id, serverChanTieuDeRong,
-    }).toEqual({ manHinhChanRong: true, maxLength100: true, nhapDeTrong: true, serverChanTieuDeRong: true });
+      manHinhChanRong: /!title\.trim\(\)\s*\|\|\s*title\.trim\(\)\.length > 100/.test(post), maxLength100: /maxLength=\{100\}/.test(post),
+      nhapDeTrong: !!draft.id, serverChanTieuDeRong, serverChanTieuDe101,
+      acceptsOne: db.videos.some((video) => video.title === 'T'),
+      acceptsHundred: db.videos.some((video) => video.title === 'T'.repeat(100)),
+    }).toEqual({ manHinhChanRong: true, maxLength100: true, nhapDeTrong: true, serverChanTieuDeRong: true, serverChanTieuDe101: true, acceptsOne: true, acceptsHundred: true });
   });
   test('TC10 – Mô tả tối đa 500 ký tự', () => {
     const post = src('screens/camera/PostVideoScreen.tsx');
@@ -129,9 +136,11 @@ describe('A. Unit Test', () => {
     await expect(searchVideosWithStatus('k'.repeat(101))).rejects.toThrow();
   });
   test('TC14 – Làm sạch dữ liệu đầu vào (NFR09)', async () => {
-    const u = seedUser('X');
+    const u = seedUser('X', { auth_id: 'x-auth' });
     const c = await addComment('v', u, '<img src=x onerror=alert(1)>Hay');
-    expect(c.content).not.toMatch(/onerror|<img/);
+    expect(c.content).toBe('Hay');
+    await updateProfile('x-auth', { bio: '<script>alert(1)</script>Xin chào' });
+    expect(db.users.find((profile) => profile.id === u)?.bio).toBe('alert(1)Xin chào');
   });
   test('TC15 – Đăng ký trùng email bị từ chối', async () => {
     await signUpWithEmail('An', 'existing@example.com', 'Trung1234');
@@ -162,13 +171,13 @@ describe('A. Unit Test', () => {
     expect(s).toMatch(/updateUser\(\{\s*password: newPassword/);
   });
   test('TC23 – Điểm thịnh hành = views×3 + likes×2 + comments', () => {
-    const fn = Object.keys(videoService).find((k) => /score|trendingScore/i.test(k));
-    expect(fn).toBeDefined();
+    expect(videoService.calculateTrendingScore({ views_count: 10, likes_count: 5, comments_count: 2 })).toBe(42);
+    expect(videoService.calculateTrendingScore({ views_count: 10, likes_count: 5, comments_count: 2 }, { views: 1, likes: 1, comments: 1 })).toBe(17);
   });
   test('TC24 – Trending: chỉ PUBLIC trong 30 ngày, xếp theo điểm', async () => {
     const c = seedUser('C');
-    const a = seedVideo(c, { views_count: 100, created_at: recent(2) });
-    const b = seedVideo(c, { views_count: 50, likes_count: 200, created_at: recent(3) });
+    const a = seedVideo(c, { views_count: 100, likes_count: 0, comments_count: 0, created_at: recent(2) });
+    const b = seedVideo(c, { views_count: 50, likes_count: 200, comments_count: 0, created_at: recent(3) });
     seedVideo(c, { views_count: 999, visibility: 'PRIVATE', created_at: recent(1) });
     seedVideo(c, { views_count: 1000, created_at: recent(60) });
     expect((await getTrendingVideos(10)).map((v) => v.id)).toEqual([b, a]);

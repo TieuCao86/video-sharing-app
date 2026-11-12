@@ -29,15 +29,17 @@ const VIEWABILITY_CONFIG = {
 interface DraftViewerProps {
   initialDraftId: string;
   onClose: () => void;
+  draftItems?: DraftItem[];
 }
 
 export const DraftViewer: React.FC<DraftViewerProps> = ({
   initialDraftId,
   onClose,
+  draftItems,
 }) => {
   const insets = useSafeAreaInsets();
-  const { drafts, deleteDraft } = useDraftsStore();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const { drafts: localDrafts, deleteDraft } = useDraftsStore();
+  const drafts = draftItems ?? localDrafts;
   const flatListRef = useRef<FlatList<DraftItem>>(null);
 
   // Find initial index
@@ -46,9 +48,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [draftToDelete, setDraftToDelete] = useState<DraftItem | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastOpacity] = useState(() => new Animated.Value(0));
 
   // Scroll to initial draft on mount
   useEffect(() => {
@@ -135,23 +134,8 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
   };
 
   // Publish Action
-    // UC30: chạm Đăng trên bản nháp → mở lại màn hình Post (S08) với dữ liệu đã lưu để tiếp tục đăng
-  const handlePublishPress = (draft: DraftItem) => {
-    if (isPublishing) return; // Prevent double taps
-    setIsPublishing(true);
-    navigation.navigate('PostVideo', {
-      videoUri: draft.videoUrl,
-      durationSeconds: draft.durationSeconds ?? 0,
-      audioTrackId: draft.audioTrackId,
-      audioTitle: draft.audioTitle,
-      draftId: draft.id,
-      title: draft.title === 'Untitled recording' ? '' : draft.title,
-      description: draft.description,
-      topicId: draft.topicId,
-      visibility: draft.visibility,
-      coverUri: draft.thumbnail || undefined,
-    });
-    setTimeout(() => setIsPublishing(false), 600);
+  const handlePublishPress = (_draft: DraftItem) => {
+    Alert.alert('Tính năng đang được phát triển', 'Chức năng Publish bản nháp sẽ sớm được hỗ trợ.');
   };
 
   const renderDraftItem = ({
@@ -166,7 +150,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
       isActive={index === currentIndex && !draftToDelete}
       onDelete={handleDeletePress}
       onPublish={handlePublishPress}
-      isPublishing={isPublishing}
     />
   );
 
@@ -206,25 +189,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
           <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-
-      {/* Success Toast Banner */}
-      {toastMessage && (
-        <Animated.View
-          style={[
-            styles.toastContainer,
-            {
-              top: Math.max(insets.top, 20) + 60,
-              opacity: toastOpacity,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.toastCard}>
-            <Ionicons name="checkmark-circle" size={22} color="#34C759" />
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        </Animated.View>
-      )}
 
       {/* Delete Confirmation Dialog Modal */}
       <Modal

@@ -46,6 +46,7 @@ export const DraftsScreen: React.FC = () => {
         title: v.title || v.caption || 'Untitled draft',
         updatedAt: formatRelativeTime(v.createdAt),
         videoUrl: v.videoUrl || '',
+        description: v.caption || '',
       }));
 
       setRemoteDrafts(mapped);
@@ -74,6 +75,7 @@ export const DraftsScreen: React.FC = () => {
     return (
       <DraftViewer
         initialDraftId={activeDraftId}
+        draftItems={allDrafts}
         onClose={() => setActiveDraftId(null)}
       />
     );
