@@ -73,23 +73,7 @@ export async function getCommentsByVideoId(
   videoId: string,
   currentUserId?: string,
 ): Promise<CommentItem[]> {
-  // 1. Kiểm tra video có cho phép bình luận không
-  const { data: video, error: videoError } = await supabase
-    .from("videos")
-    .select("allow_comments")
-    .eq("id", videoId)
-    .maybeSingle();
-
-  if (videoError) {
-    throw videoError;
-  }
-
-  // Video không tồn tại hoặc đã tắt bình luận
-  if (!video || video.allow_comments === false) {
-    return [];
-  }
-
-  // 2. Lấy danh sách bình luận
+  // Schema videos hiện không có allow_comments; lấy comments trực tiếp.
   const { data, error } = await supabase
     .from("comments")
     .select("*")
@@ -103,11 +87,11 @@ export async function getCommentsByVideoId(
 
   const rows = data || [];
 
-  // 3. Lấy thông tin người bình luận
+  // Lấy thông tin người bình luận
   const userIds = [...new Set(rows.map((c: any) => c.user_id).filter(Boolean))];
   const profileMap = await fetchProfilesByIds(userIds);
 
-  // 4. Lấy danh sách comment user hiện tại đã like
+  // Lấy danh sách comment user hiện tại đã like
   let likedCommentIds = new Set<string>();
 
   const dbUserId = currentUserId
