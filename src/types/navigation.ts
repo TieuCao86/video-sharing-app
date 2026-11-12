@@ -1,4 +1,4 @@
-import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { NavigatorScreenParams } from "@react-navigation/native";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -30,7 +30,7 @@ export type RootStackParamList = {
   AddAudio: {
     videoUri?: string;
   };
-    PostVideo: {
+  PostVideo: {
     videoUri: string;
     durationSeconds: number;
     fileSizeBytes: number;
