@@ -37,9 +37,10 @@ export default function PostVideoScreen() {
   const route = useRoute<PostRoute>();
   const insets = useSafeAreaInsets();
   const { addDraft } = useDraftsStore();
-  const { videoUri, durationSeconds, audioTrackId, audioTitle } = route.params;
+  const { videoUri, durationSeconds, fileSizeBytes, audioTrackId, audioTitle } = route.params;
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [hashtagsInput, setHashtagsInput] = useState('');
   const [topics, setTopics] = useState<Topic[]>([]);
   const [topicId, setTopicId] = useState<string>();
   const [topicsLoading, setTopicsLoading] = useState(true);
@@ -109,6 +110,7 @@ export default function PostVideoScreen() {
       await addDraft({
         videoUrl: videoUri,
         durationSeconds,
+        fileSizeBytes,
         title,
         description,
         topicId,
@@ -135,8 +137,21 @@ export default function PostVideoScreen() {
 
   const handlePost = async () => {
     if (postingRef.current) return;
-    if (!title.trim()) {
-      Alert.alert('Add a title', 'Enter a title before posting your video.');
+    if (!title.trim() || title.trim().length > 100) {
+      Alert.alert('Invalid title', 'Enter a title between 1 and 100 characters.');
+      return;
+    }
+    if (description.length > 500) {
+      Alert.alert('Description too long', 'Keep the description to 500 characters or fewer.');
+      return;
+    }
+    if (durationSeconds > 180 || (fileSizeBytes !== undefined && fileSizeBytes > 100 * 1024 * 1024)) {
+      Alert.alert('Video does not meet requirements', 'Choose an MP4 or MOV video up to 100 MB and 180 seconds.');
+      return;
+    }
+    const hashtags = hashtagsInput.split(/[\s,]+/).filter(Boolean).map((tag) => tag.replace(/^#/, ''));
+    if (hashtags.length > 10 || hashtags.some((tag) => !/^[A-Za-z0-9_]{1,30}$/.test(tag))) {
+      Alert.alert('Invalid hashtags', 'Use up to 10 hashtags, each 1 to 30 letters, numbers, or underscores.');
       return;
     }
 
@@ -145,9 +160,12 @@ export default function PostVideoScreen() {
     try {
       await createVideoPost({
         videoUri,
+        fileSizeBytes,
+        durationSeconds,
         coverUri,
         title,
         description,
+        hashtags,
         topicId,
         visibility,
         audioTrackId,
@@ -256,12 +274,25 @@ export default function PostVideoScreen() {
             onChangeText={setDescription}
             placeholder="Share more about your video..."
             placeholderTextColor="#A0A0A8"
-            maxLength={2200}
+            maxLength={500}
             multiline
             textAlignVertical="top"
             style={styles.descriptionInput}
           />
-          <Text style={styles.counter}>{description.length}/2200</Text>
+          <Text style={styles.counter}>{description.length}/500</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.label}>Hashtags</Text>
+          <TextInput
+            value={hashtagsInput}
+            onChangeText={setHashtagsInput}
+            placeholder="#travel #daily_1 (up to 10)"
+            placeholderTextColor="#A0A0A8"
+            autoCapitalize="none"
+            style={styles.titleInput}
+          />
+          <Text style={styles.counter}>Separate hashtags with spaces or commas</Text>
         </View>
 
         <View style={styles.section}>

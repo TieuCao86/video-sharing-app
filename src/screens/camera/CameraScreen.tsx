@@ -12,6 +12,7 @@ import { CameraView, CameraType, FlashMode, useCameraPermissions, useMicrophoneP
 import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import { RecordingTimer } from '../../components/RecordingTimer';
 import { FilterBottomSheet, Filter } from '../../components/FilterBottomSheet';
 import { FilterOverlay } from '../../components/FilterOverlay';
@@ -199,9 +200,11 @@ export default function CameraScreen() {
         return;
       }
 
+      const recordedFileSize = new File(savedVideoUri).size;
       navigation.navigate('RecordPreview', {
         videoUri: savedVideoUri,
         durationSeconds: recordedSecondsRef.current,
+        fileSizeBytes: recordedFileSize ?? 0,
         audioTrackId: selectedAudioIdRef.current,
         audioTitle: selectedAudioTitleRef.current,
       });
@@ -271,7 +274,11 @@ export default function CameraScreen() {
       if (result.canceled || !result.assets[0]) return;
 
       const asset = result.assets[0];
-      if (asset.fileSize && asset.fileSize > MAX_FILE_BYTES) {
+      if (!/\.(mp4|mov)$/i.test(asset.uri.split('?')[0])) {
+        Alert.alert('Unsupported video format', 'Choose an MP4 or MOV video.');
+        return;
+      }
+      if (asset.fileSize === undefined || asset.fileSize > MAX_FILE_BYTES) {
         Alert.alert('Video too large', 'Choose a video under 100 MB.');
         return;
       }
@@ -286,6 +293,7 @@ export default function CameraScreen() {
       navigation.navigate('RecordPreview', {
         videoUri: savedVideoUri,
         durationSeconds,
+        fileSizeBytes: asset.fileSize,
         audioTrackId: selectedAudioIdRef.current,
         audioTitle: selectedAudioTitleRef.current,
       });

@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { CustomButton } from '../../components/buttons/CustomButton';
 import { BrandLogo } from '../../components/common/BrandLogo';
-import { signUpWithEmail } from '../../services/authService';
+import { getSignupPasswordError, isValidSignupEmail, signUpWithEmail } from '../../services/authService';
 
 interface SignUpScreenProps {
   onSignUp?: () => void;
@@ -42,12 +42,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       setErrorMessage('Tên hiển thị phải từ 2 đến 50 ký tự');
       return;
     }
-    if (!email.trim()) {
-      setErrorMessage('Vui lòng nhập địa chỉ Email');
+    if (!isValidSignupEmail(email.trim())) {
+      setErrorMessage('Vui lòng nhập email hợp lệ (tối đa 254 ký tự)');
       return;
     }
-    if (password.length < 6) {
-      setErrorMessage('Mật khẩu tối thiểu phải 6 ký tự');
+    const passwordError = getSignupPasswordError(password);
+    if (passwordError) {
+      setErrorMessage(passwordError);
       return;
     }
     if (password !== confirmPassword) {
@@ -151,7 +152,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 />
               </TouchableOpacity>
             </View>
-            <Text style={styles.helperText}>*At least 6 characters*</Text>
+            <Text style={styles.helperText}>*6–64 ký tự, gồm chữ cái và chữ số*</Text>
           </View>
 
           <View style={styles.inputGroup}>

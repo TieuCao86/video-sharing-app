@@ -5,6 +5,14 @@ import { createCommentLikeNotification, createCommentNotification } from './noti
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
 
+function sanitizePlainText(value: string): string {
+  return value
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim();
+}
+
 export interface CommentItem {
   id: string;
   videoId: string;
@@ -106,7 +114,7 @@ export async function addComment(
   content: string,
   parentId?: string
 ): Promise<CommentItem> {
-  const trimmed = content.trim();
+  const trimmed = sanitizePlainText(content);
   if (!trimmed || trimmed.length > 500) {
     throw new Error('Nội dung bình luận phải từ 1 đến 500 ký tự');
   }

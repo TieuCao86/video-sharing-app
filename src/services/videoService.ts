@@ -38,9 +38,12 @@ export interface VideoDetailItem {
 
 export interface CreateVideoInput {
   videoUri: string;
+  fileSizeBytes: number;
+  durationSeconds: number;
   coverUri?: string;
   title: string;
   description: string;
+  hashtags?: string[];
   topicId?: string;
   visibility: 'PUBLIC' | 'PRIVATE';
   audioTrackId?: string;
@@ -52,7 +55,7 @@ export interface VideoSearchResult {
   warning?: string;
 }
 
-const VIDEO_FILE_EXTENSIONS = /\.(mp4|mov|m4v|webm)$/i;
+const VIDEO_FILE_EXTENSIONS = /\.(mp4|mov)$/i;
 const IMAGE_FILE_EXTENSIONS = /\.(jpg|jpeg|png|webp|heic)$/i;
 
 async function uploadMediaFile(
@@ -82,6 +85,21 @@ async function uploadMediaFile(
 
 /** Upload a recorded video and create its database post. */
 export async function createVideoPost(input: CreateVideoInput): Promise<void> {
+  const videoExtension = input.videoUri.split('?')[0].match(VIDEO_FILE_EXTENSIONS)?.[1];
+  if (!videoExtension) throw new Error('Video must be an MP4 or MOV file.');
+  if (!Number.isFinite(input.fileSizeBytes) || input.fileSizeBytes < 0 || input.fileSizeBytes > 100 * 1024 * 1024) {
+    throw new Error('Video must be 100 MB or smaller.');
+  }
+  if (!Number.isFinite(input.durationSeconds) || input.durationSeconds < 0 || input.durationSeconds > 180) {
+    throw new Error('Video must be 180 seconds or shorter.');
+  }
+  const title = input.title.trim();
+  if (title.length < 1 || title.length > 100) throw new Error('Title must be 1 to 100 characters.');
+  if (input.description.length > 500) throw new Error('Description must be 500 characters or fewer.');
+  const hashtags = input.hashtags ?? [];
+  if (hashtags.length > 10 || hashtags.some((tag) => !/^[A-Za-z0-9_]{1,30}$/.test(tag))) {
+    throw new Error('Use up to 10 hashtags, each 1 to 30 letters, numbers, or underscores.');
+  }
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   if (!authData.user) throw new Error('Please sign in before posting a video.');
@@ -90,7 +108,7 @@ export async function createVideoPost(input: CreateVideoInput): Promise<void> {
   let videoPath: string | undefined;
   let coverPath: string | undefined;
   try {
-    videoPath = await uploadMediaFile('Video', authData.user.id, input.videoUri, 'mp4');
+    videoPath = await uploadMediaFile('Video', authData.user.id, input.videoUri, videoExtension.toLowerCase());
     if (input.coverUri) {
       coverPath = await uploadMediaFile('Image', authData.user.id, input.coverUri, 'jpg');
     }
@@ -101,8 +119,8 @@ export async function createVideoPost(input: CreateVideoInput): Promise<void> {
       : null;
     const { data: createdVideo, error } = await supabase.from('videos').insert({
       creator_id: creatorId,
-      title: input.title.trim(),
-      description: input.description.trim(),
+      title,
+      description: [input.description.trim(), ...hashtags.map((tag) => `#${tag}`)].filter(Boolean).join(' '),
       visibility: input.visibility,
       topic_id: input.topicId || null,
       audio_track_id: input.audioTrackId && isUUID(input.audioTrackId) ? input.audioTrackId : null,
@@ -181,6 +199,7 @@ function mapVideoItem(
  * @param currentUserId - users.id (db id) của người đang xem để check isLiked
  */
 export async function getTrendingVideos(limit = 10, currentUserId?: string): Promise<VideoDetailItem[]> {
+  const publishedSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from('videos')
     .select(`
@@ -189,15 +208,16 @@ export async function getTrendingVideos(limit = 10, currentUserId?: string): Pro
       audio_tracks:audio_track_id (id, title, artist, audio_url)
     `)
     .eq('visibility', 'PUBLIC')
-    .order('views_count', { ascending: false })
-    .limit(limit);
+    .gte('created_at', publishedSince);
 
   if (error) {
     console.error('Error fetching trending videos:', error);
     throw error;
   }
 
-  const videos = data || [];
+  const videos = [...(data || [])]
+    .sort((a: any, b: any) => calculateTrendingScore(b) - calculateTrendingScore(a))
+    .slice(0, Math.max(0, limit));
 
   // Nếu có user đang đăng nhập → batch check isLiked cho toàn bộ video
   let likedSet = new Set<string>();
@@ -440,11 +460,42 @@ export async function getUserDrafts(creatorId: string): Promise<VideoDetailItem[
   return (data || []).map((v: any) => mapVideoItem(v));
 }
 
+/** Publish an existing server-side draft without uploading its media again. */
+export async function publishStoredVideoDraft(draftId: string, title: string): Promise<void> {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle || trimmedTitle.length > 100) throw new Error('Title must be 1 to 100 characters.');
+  const { data, error } = await supabase
+    .from('videos')
+    .update({ title: trimmedTitle, visibility: 'PUBLIC', updated_at: new Date().toISOString() })
+    .eq('id', draftId)
+    .eq('visibility', 'DRAFT')
+    .select('id');
+  if (error) throw error;
+  if (!data?.length) throw new Error('Could not publish this draft. Refresh your drafts and try again.');
+}
+
 const VIDEO_SEARCH_SELECT = `
   *,
   profiles:creator_id (id, display_name, avatar_url),
   audio_tracks:audio_track_id (id, title, artist, audio_url)
 `;
+
+export interface TrendingWeights {
+  views: number;
+  likes: number;
+  comments: number;
+}
+
+export const DEFAULT_TRENDING_WEIGHTS: TrendingWeights = { views: 3, likes: 2, comments: 1 };
+
+export function calculateTrendingScore(
+  video: { views_count?: number | null; likes_count?: number | null; comments_count?: number | null },
+  weights: TrendingWeights = DEFAULT_TRENDING_WEIGHTS
+): number {
+  return (video.views_count ?? 0) * weights.views
+    + (video.likes_count ?? 0) * weights.likes
+    + (video.comments_count ?? 0) * weights.comments;
+}
 
 class NonFallbackSearchError extends Error {}
 
@@ -485,7 +536,7 @@ async function searchVideosByKeyword(query: string): Promise<VideoDetailItem[]> 
 export async function searchVideosWithStatus(query: string): Promise<VideoSearchResult> {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) return { videos: [], mode: 'hybrid' };
-  if (trimmedQuery.length > 300) throw new Error('Search query is too long.');
+  if (trimmedQuery.length > 100) throw new Error('Search query must be 100 characters or fewer.');
 
   try {
     const { data, error } = await supabase.functions.invoke<{ videoIds?: unknown }>('video-search', {

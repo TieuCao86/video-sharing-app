@@ -10,6 +10,22 @@ export interface AuthResponse {
   user?: UserProfile;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidSignupEmail(email: string): boolean {
+  return email.length <= 254 && EMAIL_PATTERN.test(email);
+}
+
+export function getSignupPasswordError(password: string): string | null {
+  if (password.length < 6 || password.length > 64) {
+    return 'Mật khẩu phải từ 6 đến 64 ký tự.';
+  }
+  if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return 'Mật khẩu phải có ít nhất 1 chữ cái và 1 chữ số.';
+  }
+  return null;
+}
+
 /**
  * Đăng nhập bằng Email và Password (UC02 - S12)
  */
@@ -77,11 +93,12 @@ export async function signUpWithEmail(
   if (trimmedName.length < 2 || trimmedName.length > 50) {
     return { success: false, message: 'Tên hiển thị phải từ 2 đến 50 ký tự.' };
   }
-  if (!trimmedEmail) {
-    return { success: false, message: 'Vui lòng nhập Email hợp lệ.' };
+  if (!isValidSignupEmail(trimmedEmail)) {
+    return { success: false, message: 'Vui lòng nhập email hợp lệ (tối đa 254 ký tự).' };
   }
-  if (password.length < 6) {
-    return { success: false, message: 'Mật khẩu phải từ 6 ký tự trở lên.' };
+  const passwordError = getSignupPasswordError(password);
+  if (passwordError) {
+    return { success: false, message: passwordError };
   }
 
   try {
@@ -136,8 +153,8 @@ export async function verifyOtpCode(
   const trimmedEmail = email.trim();
   const trimmedToken = token.trim();
 
-  if (!trimmedEmail || !trimmedToken) {
-    return { success: false, message: 'Vui lòng nhập đầy đủ mã OTP.' };
+  if (!trimmedEmail || !/^\d{6}$/.test(trimmedToken)) {
+    return { success: false, message: 'Mã OTP phải gồm đúng 6 chữ số.' };
   }
 
   try {
