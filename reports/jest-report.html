@@ -1,0 +1,730 @@
+<html><head><meta charset="utf-8"/><title>8ThreadsTV – Jest Test Report</title><style type="text/css">:root {
+  --text-primary: #111;
+  --text-secondary: #4f4f4f;
+  --success: #006633;
+  --success-bright: #80ffbf;
+  --danger: #cc071e;
+  --danger-bright: #fbdfe0;
+  --warning: #995c00;
+  --warning-bright: #ffeea8;
+  --panel: #eee;
+  --border: #949494;
+  --disabled: #6b6b6b;
+}
+
+html,
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
+  margin: 0;
+  padding: 0;
+  color: var(--text-primary);
+}
+body {
+  padding: 2rem 1rem;
+}
+.jesthtml-content {
+  margin: 0 auto;
+  max-width: 70rem;
+}
+header {
+  display: flex;
+  align-items: center;
+}
+#title {
+  margin: 0;
+  flex-grow: 1;
+}
+#logo {
+  height: 4rem;
+}
+#timestamp {
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+#metadata-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.additional-information-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+/** SUMMARY */
+#summary {
+  color: var(--text-primary);
+  display: flex;
+  font-family: monospace;
+  font-size: 1rem;
+}
+#summary > div {
+  margin-right: 0.5rem;
+  background: var(--panel);
+  padding: 1rem;
+  min-width: 15rem;
+}
+#summary > div:last-child {
+  margin-right: 0;
+}
+@media only screen and (max-width: 720px) {
+  #summary {
+    flex-direction: column;
+  }
+  #summary > div {
+    margin-right: 0;
+    margin-top: 1rem;
+  }
+  #summary > div:first-child {
+    margin-top: 0;
+  }
+}
+
+.summary-total {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+.summary-passed {
+  color: var(--success);
+  border-left: 0.4rem solid var(--success);
+  padding-left: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+.summary-failed,
+.summary-obsolete-snapshots {
+  color: var(--danger);
+  border-left: 0.4rem solid var(--danger);
+  padding-left: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+.summary-pending {
+  color: var(--warning);
+  border-left: 0.4rem solid var(--warning);
+  padding-left: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+.summary-empty {
+  color: var(--disabled);
+  border-left: 0.4rem solid var(--disabled);
+  margin-bottom: 0.15rem;
+}
+
+.test-result {
+  padding: 1rem;
+  margin-bottom: 0.25rem;
+}
+.test-result:last-child {
+  border: 0;
+}
+.test-result.passed {
+  background-color: var(--success-bright);
+  color: var(--success);
+}
+.test-result.failed {
+  background-color: var(--danger-bright);
+  color: var(--danger);
+}
+.test-result.pending {
+  background-color: var(--warning-bright);
+  color: var(--warning);
+}
+
+.test-info {
+  display: flex;
+  justify-content: space-between;
+}
+.test-suitename {
+  width: 20%;
+  text-align: left;
+  font-weight: bold;
+  word-break: break-word;
+}
+.test-title {
+  width: 40%;
+  text-align: left;
+  font-style: italic;
+}
+.test-status {
+  width: 20%;
+  text-align: right;
+}
+.test-duration {
+  width: 10%;
+  text-align: right;
+  font-size: 0.85rem;
+}
+
+.failureMessages {
+  padding: 0 1rem;
+  margin-top: 1rem;
+  border-top: 1px dashed var(--danger);
+}
+.failureMessages.suiteFailure {
+  border-top: none;
+}
+.failureMsg {
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
+}
+
+.suite-container {
+  margin-bottom: 1rem;
+}
+.suite-info {
+  padding: 1rem;
+  background-color: var(--panel);
+  color: var(--text-secondary);
+  border: 0.15rem solid;
+  border-color: var(--panel);
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+.suite-info:hover {
+  border-color: var(--border);
+  cursor: pointer;
+}
+.suite-info .suite-path {
+  word-break: break-all;
+  flex-grow: 1;
+  font-family: monospace;
+  font-size: 1rem;
+}
+.suite-info .suite-time {
+  margin-left: 1rem;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.85rem;
+}
+.suite-info .suite-time.warn {
+  background-color: var(--danger);
+  color: #fff;
+}
+.suite-info:before {
+  content: "\2303";
+  display: inline-block;
+  margin-right: 1rem;
+  transform: rotate(180deg) translateY(0.15rem);
+}
+.suite-container[open] .suite-info:before {
+  transform: rotate(0deg) translateY(0.15rem);
+}
+
+/* CONSOLE LOGS */
+.suite-consolelog {
+  margin-bottom: 0.25rem;
+  padding: 1rem;
+  background-color: var(--panel);
+}
+.suite-consolelog-header {
+  font-weight: bold;
+}
+.suite-consolelog-item {
+  padding: 0.5rem;
+}
+.suite-consolelog-item pre {
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
+}
+.suite-consolelog-item-origin {
+  color: var(--text-secondary);
+  font-weight: bold;
+}
+.suite-consolelog-item-message {
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0 0.5rem;
+}
+
+/* OBSOLETE SNAPSHOTS */
+.suite-obsolete-snapshots {
+  margin-bottom: 0.25rem;
+  padding: 1rem;
+  background-color: var(--danger-bright);
+  color: var(--danger);
+}
+.suite-obsolete-snapshots-header {
+  font-weight: bold;
+}
+.suite-obsolete-snapshots-item {
+  padding: 0.5rem;
+}
+.suite-obsolete-snapshots-item pre {
+  margin: 0.5rem 0;
+  white-space: pre-wrap;
+  white-space: -moz-pre-wrap;
+  white-space: -pre-wrap;
+  white-space: -o-pre-wrap;
+  word-wrap: break-word;
+}
+.suite-obsolete-snapshots-item-message {
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0 0.5rem;
+}
+</style></head><body><main class="jesthtml-content"><header><h1 id="title">8ThreadsTV – Jest Test Report</h1></header><section id="metadata-container"><div id="timestamp">Started: 2026-11-12 12:28:39</div><div id="summary"><div id="suite-summary"><div class="summary-total">Suites (2)</div><div class="summary-passed  summary-empty">0 passed</div><div class="summary-failed ">2 failed</div><div class="summary-pending  summary-empty">0 pending</div></div><div id="test-summary"><div class="summary-total">Tests (69)</div><div class="summary-passed ">26 passed</div><div class="summary-failed ">31 failed</div><div class="summary-pending ">12 pending</div></div></div></section><details id="suite-1" class="suite-container" open=""><summary class="suite-info"><div class="suite-path">D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts</div><div class="suite-time">4.113s</div></summary><div class="suite-tests"><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC41 – Đăng ký → OTP → kích hoạt tài khoản</div><div class="test-status">passed</div><div class="test-duration">0.011s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC42 – Đăng nhập, token lưu trong vùng lưu trữ an toàn</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toMatch(expected)
+
+Expected pattern: /SecureStore/
+Received string:  "import AsyncStorage from '@react-native-async-storage/async-storage'·
+import { createClient } from '@supabase/supabase-js'···
+export const supabase = createClient(·
+    process.env.EXPO_PUBLIC_SUPABASE_URL!,·
+    process.env.EXPO_PUBLIC_SUPABASE_KEY!,·
+    {·
+        auth: {·
+            storage: AsyncStorage,·
+            autoRefreshToken: true,·
+            persistSession: true,·
+            detectSessionInUrl: false,·
+        },·
+    })"
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:52:17)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC43 – Tài khoản chưa xác thực không đăng nhập được</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC44 – Đăng xuất: hộp thoại xác nhận 1 lần, xóa phiên</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: false
+Received: true
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:64:42)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC45 – Giới hạn tần suất đăng nhập/OTP (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC46 – Cập nhật hồ sơ kèm ảnh đại diện lên Supabase Storage</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC47 – Đổi mật khẩu rồi đăng nhập lại</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC48 – Trang chủ: lỗi mạng hiển thị thông báo + nút Thử lại [mã nguồn HomeScreen]</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:85:37)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC49 – Video theo chủ đề: PUBLIC, mới nhất trước, 20/trang</div><div class="test-status">failed</div><div class="test-duration">0.004s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toHaveLength(expected)
+
+Expected length: 20
+Received length: 25
+Received array:  [{"audioTrack": undefined, "caption": "Video 3a3", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:27:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "000013a3-0000-4000-8000-0000000013a3", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 3a3", "videoUrl": "https://cdn.test/000013a3-0000-4000-8000-0000000013a3.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 3a2", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:26:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "000013a2-0000-4000-8000-0000000013a2", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 3a2", "videoUrl": "https://cdn.test/000013a2-0000-4000-8000-0000000013a2.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 3a1", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:25:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "000013a1-0000-4000-8000-0000000013a1", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 3a1", "videoUrl": "https://cdn.test/000013a1-0000-4000-8000-0000000013a1.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 3a0", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:24:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "000013a0-0000-4000-8000-0000000013a0", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 3a0", "videoUrl": "https://cdn.test/000013a0-0000-4000-8000-0000000013a0.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39f", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:23:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139f-0000-4000-8000-00000000139f", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39f", "videoUrl": "https://cdn.test/0000139f-0000-4000-8000-00000000139f.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39e", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:22:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139e-0000-4000-8000-00000000139e", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39e", "videoUrl": "https://cdn.test/0000139e-0000-4000-8000-00000000139e.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39d", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:21:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139d-0000-4000-8000-00000000139d", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39d", "videoUrl": "https://cdn.test/0000139d-0000-4000-8000-00000000139d.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39c", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:20:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139c-0000-4000-8000-00000000139c", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39c", "videoUrl": "https://cdn.test/0000139c-0000-4000-8000-00000000139c.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39b", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:19:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139b-0000-4000-8000-00000000139b", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39b", "videoUrl": "https://cdn.test/0000139b-0000-4000-8000-00000000139b.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, {"audioTrack": undefined, "caption": "Video 39a", "commentsCount": 0, "coverUrl": "", "createdAt": "2026-10-01T00:18:00.000Z", "creator": {"avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100", "id": "00000066-0000-4000-8000-000000000066", "isFollowing": false, "name": "C"}, "id": "0000139a-0000-4000-8000-00000000139a", "isLiked": false, "likes": "0", "likesCount": 0, "title": "Video 39a", "videoUrl": "https://cdn.test/0000139a-0000-4000-8000-00000000139a.mp4", "views": "0 views", "viewsCount": 0, "visibility": "PUBLIC"}, …]
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:93:18)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC50 – Danh sách thịnh hành theo BR05</div><div class="test-status">failed</div><div class="test-duration">0.004s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+  Array [
+-   "000013a7-0000-4000-8000-0000000013a7",
+    "000013a6-0000-4000-8000-0000000013a6",
++   "000013a7-0000-4000-8000-0000000013a7",
+  ]
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:99:60)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC51 – Tìm kiếm video theo tiêu đề / mô tả / hashtag, chỉ PUBLIC</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 0
+
+  Array [
+    "Cat dance",
+-   "Dog",
+  ]
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:105:49)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC52 – Tìm tài khoản và Follow từ kết quả</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC53 – Phát video PRIVATE/đã xóa không mở được (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC54 – Đăng video: thanh tiến trình, lưu Supabase Storage, xuất hiện ở My Videos</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+  Object {
+-   "progress": true,
++   "progress": false,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:120:50)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC55 – Tệp 120 MB bị chặn ở cả client và server</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:127:21)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC56 – Upload gián đoạn: báo lỗi, không còn dữ liệu dở dang</div><div class="test-status">passed</div><div class="test-duration">0.003s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC57 – Cập nhật video qua S18 (chủ sở hữu / người khác)</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:139:89)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC58 – Xóa video: DELETED, xóa tệp, ẩn khỏi mọi danh sách</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:142:91)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC59 – Hai yêu cầu Like đồng thời chỉ tạo 1 bản ghi; Unlike về 0</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC60 – Thêm và xem bình luận, mới nhất trước</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC61 – Video tắt bình luận: ẩn khung bình luận, API từ chối</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:160:87)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC62 – Thả tim bình luận trên S04</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC63 – Follow từ hồ sơ, tìm trong danh sách Followers, Unfollow</div><div class="test-status">passed</div><div class="test-duration">0.003s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC64 – Ẩn gợi ý (X) không xuất hiện lại sau khi tải lại [mã nguồn UserProfileView]</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:181:23)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC65 – Kho nhạc: tab For you/Trending/Saved, tìm, lưu 1 lần</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+  Object {
+-   "save": true,
++   "save": false,
+    "search": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:185:99)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC66 – Bản nháp: chạm mở lại S08, mỗi tài khoản chỉ thấy nháp của mình</div><div class="test-status">failed</div><div class="test-duration">0.004s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 2
++ Received  + 2
+
+  Object {
+-   "reopenPost": true,
+-   "userBSeesA": false,
++   "reopenPost": false,
++   "userBSeesA": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\integration.doc2.test.ts:193:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC67 – Giả mạo userId khi ghi dữ liệu (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC68 – API danh sách không trả video ngoài quyền xem (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">B. Integration Test</div><div class="test-title">TC69 – ≥ 95% API đọc phản hồi ≤ 3 giây (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div></div></details><details id="suite-2" class="suite-container" open=""><summary class="suite-info"><div class="suite-path">D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts</div><div class="suite-time">4.11s</div></summary><div class="suite-tests"><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC01 – Tên hiển thị biên 1/2/50/51 ký tự</div><div class="test-status">passed</div><div class="test-duration">0.01s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC02 – Email: định dạng và tối đa 254 ký tự</div><div class="test-status">failed</div><div class="test-duration">0.006s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 3
++ Received  + 3
+
+  Object {
+-   "255 ký tự": false,
+-   "trung.test@": false,
+-   "trungtest.com": false,
++   "255 ký tự": true,
++   "trung.test@": true,
++   "trungtest.com": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:56:21)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC03 – Mật khẩu biên 5/6/64/65 ký tự</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+  Object {
+    "5": false,
+    "6": true,
+    "64": true,
+-   "65": false,
++   "65": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:63:15)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC04 – Mật khẩu phải có chữ và số</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 2
++ Received  + 2
+
+  Object {
+-   "123456": false,
++   "123456": true,
+    "Trung1": true,
+-   "abcdef": false,
++   "abcdef": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:67:15)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC05 – OTP phải đúng 6 chữ số [mã nguồn OTPScreen + verifyOtpCode]</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 2
++ Received  + 2
+
+  Object {
+-   "serviceChanGiaTriKhongPhaiSo": true,
+-   "uiChiNhanChuSo": true,
++   "serviceChanGiaTriKhongPhaiSo": false,
++   "uiChiNhanChuSo": false,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:75:106)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC06 – Bio tối đa 150 ký tự [mã nguồn EditProfileScreen]</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC07 – Ảnh JPG/PNG ≤ 5 MB [mã nguồn EditProfileScreen]</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC08 – Tệp video MP4/MOV ≤ 100 MB, ≤ 180 s</div><div class="test-status">failed</div><div class="test-duration">0.004s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 3
++ Received  + 3
+
+  Object {
+-   "file:///a.avi": false,
+-   "file:///a_101MB.mp4": false,
+-   "file:///a_181s.mp4": false,
++   "file:///a.avi": true,
++   "file:///a_101MB.mp4": true,
++   "file:///a_181s.mp4": true,
+    "kiemTraDungLuong": true,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:97:8)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC09 – Tiêu đề 1–100 ký tự khi đăng, bản nháp được để trống</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 1
+
+  Object {
+    "manHinhChanRong": true,
+    "maxLength100": true,
+    "nhapDeTrong": true,
+-   "serverChanTieuDeRong": true,
++   "serverChanTieuDeRong": false,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:108:8)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC10 – Mô tả tối đa 500 ký tự</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBeLessThanOrEqual(expected)
+
+Expected: &lt;= 500
+Received:    2200
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:113:28)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC11 – Tối đa 10 hashtag, mỗi hashtag 1–30 ký tự</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:117:34)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC12 – Bình luận 1–500 ký tự sau trim</div><div class="test-status">passed</div><div class="test-duration">0.005s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC13 – Từ khóa tìm kiếm 1–100 ký tự sau trim</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).rejects.toThrow()
+
+Received promise resolved instead of rejected
+Resolved to value: {"mode": "keyword", "videos": [], "warning": "Tìm kiếm ngữ nghĩa hiện không khả dụng; đang hiển thị kết quả khớp từ khóa."}
+    at expect (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\expect@30.5.2\node_modules\expect\build\index.js:2116:15)
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:129:11)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC14 – Làm sạch dữ liệu đầu vào (NFR09)</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).not.toMatch(expected)
+
+Expected pattern: not /onerror|&lt;img/
+Received string:      "&lt;img src=x onerror=alert(1)&gt;Hay"
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:134:27)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC15 – Đăng ký trùng email bị từ chối</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC16 – Đăng ký hợp lệ: tài khoản chưa xác thực, gửi OTP</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC17 – OTP hết hạn sau 10 phút (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC18 – OTP bị hủy sau 5 lần nhập sai (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC19 – Gửi lại OTP sau 60 giây (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC20 – Đăng nhập: chưa xác thực / sai mật khẩu / hợp lệ</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC21 – Không ghi dữ liệu thay tài khoản khác (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC22 – Đổi mật khẩu kiểm tra mật khẩu hiện tại [mã nguồn ChangePasswordScreen]</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC23 – Điểm thịnh hành = views×3 + likes×2 + comments</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBeDefined()
+
+Received: undefined
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:166:16)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC24 – Trending: chỉ PUBLIC trong 30 ngày, xếp theo điểm</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 1
++ Received  + 2
+
+  Array [
++   "0000138f-0000-4000-8000-00000000138f",
++   "0000138c-0000-4000-8000-00000000138c",
+    "0000138d-0000-4000-8000-00000000138d",
+-   "0000138c-0000-4000-8000-00000000138c",
+  ]
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:174:60)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC25 – Quyền xem PUBLIC/FOLLOWERS/PRIVATE theo người xem (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC26 – Bản nháp và video đã xóa không hiển thị (cần RLS trên Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC27 – Cập nhật thông tin video (chủ sở hữu)</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:179:89)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC28 – Xóa mềm video + xóa tệp media</div><div class="test-status">failed</div><div class="test-duration">0.002s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:182:91)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC29 – Lượt xem tăng 1</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC30 – Thích video không tạo bản ghi trùng</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC31 – Bỏ thích video xóa bản ghi</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC32 – Thích / bỏ thích bình luận cập nhật số đếm</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC33 – Follow / follow trùng / tự follow / unfollow</div><div class="test-status">passed</div><div class="test-duration">0.005s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC34 – Gợi ý tài khoản lọc đã follow / chưa OTP / đã ẩn [mã nguồn UserProfileView]</div><div class="test-status">failed</div><div class="test-duration">0.001s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: true
+Received: false
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:218:48)
+    at Promise.finally.completed (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1834:28)
+    at new Promise (&lt;anonymous&gt;)
+    at callAsyncCircusFn (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1774:10)
+    at _callCircusTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1167:40)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at _runTestInContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1103:3)
+    at runTestWithContext (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:996:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1008:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at _runTestsForDescribeBlockOnce (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:1003:11)
+    at _runTestsForDescribeBlock (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:824:5)
+    at run (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:789:3)
+    at runAndTransformResultsToJestFormat (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\jestAdapterInit.js:2300:21)
+    at jestAdapter (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-circus@30.5.2_supports-color@8.1.1\node_modules\jest-circus\build\runner.js:111:19)
+    at runTestInternal (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:247:16)
+    at runTest (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:315:7)
+    at Object.worker (D:\Trung\BaiTap\React-Native\video-sharing-app\node_modules\.pnpm\jest-runner@30.5.2_supports-color@8.1.1\node_modules\jest-runner\build\testWorker.js:479:12)</pre></div></div><div class="test-result pending"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC35 – Tổng lượt thích hồ sơ chỉ tính video đã đăng, chưa xóa (cần Supabase thật)</div><div class="test-status">pending</div><div class="test-duration"> </div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC36 – Sắp xếp mặc định (bình luận, video của tôi, Liked, chủ đề)</div><div class="test-status">passed</div><div class="test-duration">0.003s</div></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC37 – Phân trang mặc định 20 bản ghi</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toEqual(expected) // deep equality
+
+- Expected  - 2
++ Received  + 2
+
+  Object {
+-   "topic": 20,
+-   "trending": 20,
++   "topic": 45,
++   "trending": 10,
+  }
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:236:107)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result failed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC38 – Tối đa 20 bản nháp</div><div class="test-status">failed</div><div class="test-duration">0.003s</div></div><div class="failureMessages"> <pre class="failureMsg">Error: expect(received).toBe(expected) // Object.is equality
+
+Expected: 21
+Received: 22
+    at Object.&lt;anonymous&gt; (D:\Trung\BaiTap\React-Native\video-sharing-app\test\doc2\unit.doc2.test.ts:242:50)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)</pre></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC39 – Guest bị chặn thao tác cần đăng nhập, Customer được thực hiện</div><div class="test-status">passed</div><div class="test-duration">0.002s</div></div></div><div class="test-result passed"><div class="test-info"><div class="test-suitename">A. Unit Test</div><div class="test-title">TC40 – Mỗi video chỉ một nhạc nền [mã nguồn CameraScreen]</div><div class="test-status">passed</div><div class="test-duration">0.001s</div></div></div></div></details></main></body></html>
