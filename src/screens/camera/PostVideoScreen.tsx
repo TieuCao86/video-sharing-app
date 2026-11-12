@@ -64,12 +64,13 @@ export default function PostVideoScreen() {
   const route = useRoute<PostRoute>();
   const insets = useSafeAreaInsets();
   const { addDraft, removeDraftEntry } = useDraftsStore();
-  const { videoUri, durationSeconds, audioTrackId, audioTitle, draftId } =
+  const { videoUri, durationSeconds, fileSizeBytes, audioTrackId, audioTitle, draftId } =
     route.params;
   const [title, setTitle] = useState(route.params.title ?? "");
   const [description, setDescription] = useState(
     route.params.description ?? "",
   );
+  const [hashtagsInput, setHashtagsInput] = useState("");
   const [topics, setTopics] = useState<Topic[]>([]);
   const [topicId, setTopicId] = useState<string | undefined>(
     route.params.topicId,
@@ -149,9 +150,10 @@ export default function PostVideoScreen() {
     setPosting(true);
     let savedCoverUri: string | undefined;
     try {
+      const savedVideoUri = await persistRecording(videoUri);
       savedCoverUri = coverUri ? await persistRecording(coverUri) : undefined;
       await addDraft({
-        videoUrl: videoUri,
+        videoUrl: savedVideoUri,
         durationSeconds,
         fileSizeBytes,
         title,

@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
 import { useDraftsStore } from '../../store/useDraftsStore';
-import { deleteRecording } from '../../utils/persistRecording';
+import { deleteRecording, persistRecording } from '../../utils/persistRecording';
 
 type PreviewRoute = RouteProp<RootStackParamList, 'RecordPreview'>;
 
@@ -81,8 +81,9 @@ export default function RecordPreviewScreen() {
     setSaving(true);
     player.pause();
     try {
+      const savedVideoUri = await persistRecording(videoUri);
       await addDraft({
-        videoUrl: videoUri,
+        videoUrl: savedVideoUri,
         durationSeconds,
         fileSizeBytes,
         title: 'Untitled recording',

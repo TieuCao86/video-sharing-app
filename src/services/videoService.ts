@@ -2,6 +2,15 @@ import { supabase } from "../utils/supabase";
 import { createLikeNotification } from "./notificationService";
 import { resolveDbUserId } from "./userService";
 
+export const PAGE_SIZE = 20;
+
+function pageRange(page: number, pageSize: number): [number, number] {
+  const safePage = Math.max(1, Math.floor(page));
+  const safePageSize = Math.max(1, Math.floor(pageSize));
+  const from = (safePage - 1) * safePageSize;
+  return [from, from + safePageSize - 1];
+}
+
 /** Kiểm tra chuỗi có đúng định dạng UUID không */
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -234,7 +243,7 @@ function mapVideoItem(
  * @param limit        - số lượng video tối đa
  * @param currentUserId - users.id (db id) của người đang xem để check isLiked
  */
-export async function getTrendingVideos(limit = 10, currentUserId?: string): Promise<VideoDetailItem[]> {
+export async function getTrendingVideos(limit = 10, currentUserId?: string, page = 1): Promise<VideoDetailItem[]> {
   const publishedSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("videos")
@@ -252,9 +261,10 @@ export async function getTrendingVideos(limit = 10, currentUserId?: string): Pro
     throw error;
   }
 
+  const [from] = pageRange(page, limit);
   const videos = [...(data || [])]
     .sort((a: any, b: any) => calculateTrendingScore(b) - calculateTrendingScore(a))
-    .slice(0, Math.max(0, limit));
+    .slice(from, from + Math.max(1, limit));
 
   // Nếu có user đang đăng nhập → batch check isLiked cho toàn bộ video
   let likedSet = new Set<string>();
