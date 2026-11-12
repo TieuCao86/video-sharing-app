@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -9,14 +9,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { StoryList } from '../../components/cards/StoryList';
-import { BrowseTopics } from '../../components/cards/BrowseTopics';
-import { VideoCard } from '../../components/cards/VideoCard';
-import { AudioCard } from '../../components/AudioCard';
-import { BrandLogo } from '../../components/common/BrandLogo';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+} from "react-native";
+import { StoryList } from "../../components/cards/StoryList";
+import { BrowseTopics } from "../../components/cards/BrowseTopics";
+import { VideoCard } from "../../components/cards/VideoCard";
+import { AudioCard } from "../../components/AudioCard";
+import { BrandLogo } from "../../components/common/BrandLogo";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 
 // Import Services trực tiếp từ Supabase
 import {
@@ -26,15 +26,45 @@ import {
   VideoDetailItem,
   Topic,
   AudioTrackItem,
-} from '../../services';
+} from "../../services";
 
 // Dữ liệu Story avatar giả định cho thanh ngang
 const mockStories = [
-  { id: '1', name: 'You', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100', hasStory: true },
-  { id: '2', name: 'Laura', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100', hasStory: true },
-  { id: '3', name: 'William', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', hasStory: true },
-  { id: '4', name: 'Julia', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100', hasStory: true },
-  { id: '5', name: 'Peter', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100', hasStory: true },
+  {
+    id: "1",
+    name: "You",
+    avatar:
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100",
+    hasStory: true,
+  },
+  {
+    id: "2",
+    name: "Laura",
+    avatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100",
+    hasStory: true,
+  },
+  {
+    id: "3",
+    name: "William",
+    avatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100",
+    hasStory: true,
+  },
+  {
+    id: "4",
+    name: "Julia",
+    avatar:
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100",
+    hasStory: true,
+  },
+  {
+    id: "5",
+    name: "Peter",
+    avatar:
+      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100",
+    hasStory: true,
+  },
 ];
 
 export const HomeScreen: React.FC = () => {
@@ -52,21 +82,27 @@ export const HomeScreen: React.FC = () => {
   const [currentAudioId, setCurrentAudioId] = useState<string | null>(null);
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
 
+  const [error, setError] = useState<string | null>(null);
+
   const player = useAudioPlayer(currentAudioUrl || undefined);
   const status = useAudioPlayerStatus(player);
 
   const fetchHomeData = useCallback(async () => {
     try {
+      setError(null);
+
       const [fetchedVideos, fetchedTopics, fetchedAudios] = await Promise.all([
         getTrendingVideos(10),
         getTopics(),
         getAudioTracks(5),
       ]);
+
       setTrendingVideos(fetchedVideos);
       setTopics(fetchedTopics);
       setAudios(fetchedAudios);
     } catch (err) {
-      console.error('Error fetching home data from Supabase:', err);
+      console.error("Error fetching home data from Supabase:", err);
+      setError("Không thể tải dữ liệu. Vui lòng kiểm tra kết nối mạng.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -116,24 +152,45 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color="#FF2442" />
         </View>
+      ) : error ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setLoading(true);
+              fetchHomeData();
+            }}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF2442']} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#FF2442"]}
+            />
           }
         >
           {/* 1. Stories */}
-          <StoryList stories={mockStories} onStoryPress={(s) => console.log(s.name)} />
+          <StoryList
+            stories={mockStories}
+            onStoryPress={(s) => console.log(s.name)}
+          />
 
           {/* 2. Top Trending */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Top trending</Text>
             <TouchableOpacity
               onPress={() =>
-                navigation.navigate('VideoList', {
-                  title: 'Top trending',
-                  type: 'trending',
+                navigation.navigate("VideoList", {
+                  title: "Top trending",
+                  type: "trending",
                 })
               }
             >
@@ -159,7 +216,9 @@ export const HomeScreen: React.FC = () => {
                     thumbnail: item.coverUrl,
                     views: item.views,
                   }}
-                  onPress={() => navigation.navigate('ReelDetail', { videoId: item.id })}
+                  onPress={() =>
+                    navigation.navigate("ReelDetail", { videoId: item.id })
+                  }
                   type="trending"
                 />
               )}
@@ -170,9 +229,9 @@ export const HomeScreen: React.FC = () => {
           <BrowseTopics
             topics={topics}
             onTopicPress={(topic) => {
-              navigation.navigate('VideoList', {
+              navigation.navigate("VideoList", {
                 title: topic.name,
-                type: 'topic',
+                type: "topic",
                 topicId: topic.id,
               });
             }}
@@ -181,7 +240,7 @@ export const HomeScreen: React.FC = () => {
           {/* 4. Audio (Lấy từ Supabase) */}
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Audio</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('AudioList')}>
+            <TouchableOpacity onPress={() => navigation.navigate("AudioList")}>
               <Text style={styles.viewMore}>View more</Text>
             </TouchableOpacity>
           </View>
@@ -218,54 +277,74 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#EFEFEF',
+    borderBottomColor: "#EFEFEF",
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerText: {
-    color: '#000000',
+    color: "#000000",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginLeft: 8,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     marginTop: 20,
     marginBottom: 12,
   },
   sectionTitle: {
-    color: '#000000',
+    color: "#000000",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   viewMore: {
-    color: '#FF2442',
+    color: "#FF2442",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   emptyText: {
-    color: '#888888',
+    color: "#888888",
     paddingHorizontal: 16,
     fontSize: 14,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
+  errorText: {
+  color: '#666666',
+  fontSize: 15,
+  textAlign: 'center',
+  paddingHorizontal: 24,
+  marginBottom: 16,
+},
+
+retryButton: {
+  backgroundColor: '#FF2442',
+  paddingHorizontal: 28,
+  paddingVertical: 12,
+  borderRadius: 8,
+},
+
+retryButtonText: {
+  color: '#FFFFFF',
+  fontSize: 14,
+  fontWeight: 'bold',
+},
 });

@@ -189,17 +189,12 @@ export async function createCommentLikeNotification(
   if (!senderId || !recipientId || senderId === recipientId) return;
 
   try {
-    const payload = {
+    const { error } = await supabase.from('notifications').insert({
+      type: 'comment_like',
       sender_id: senderId,
       recipient_id: recipientId,
       video_id: videoId,
       is_read: false,
-    };
-
-    // notification_type hiện có like | comment | follow | mention.
-    const { error } = await supabase.from('notifications').insert({
-      ...payload,
-      type: 'like',
     });
 
     if (error) {

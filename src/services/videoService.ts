@@ -243,7 +243,7 @@ function mapVideoItem(
  * @param limit        - số lượng video tối đa
  * @param currentUserId - users.id (db id) của người đang xem để check isLiked
  */
-export async function getTrendingVideos(limit = 10, currentUserId?: string, page = 1): Promise<VideoDetailItem[]> {
+export async function getTrendingVideos(limit = PAGE_SIZE, currentUserId?: string, page = 1): Promise<VideoDetailItem[]> {
   const publishedSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabase
     .from("videos")
