@@ -90,7 +90,7 @@ describe('A. Unit Test', () => {
     void user;
     const results: Record<string, boolean> = {};
     for (const uri of ['file:///a.avi', 'file:///a_101MB.mp4', 'file:///a_181s.mp4']) {
-      try { await createVideoPost({ videoUri: uri, title: 'T', description: '', visibility: 'PUBLIC' }); results[uri] = true; } catch { results[uri] = false; }
+      try { await createVideoPost({ videoUri: uri, fileSizeBytes: (uri.includes('101MB')) ? 101 * 1024 * 1024 : 10, durationSeconds: (uri.includes('181s')) ? 181 : 60, title: 'T', description: '', visibility: 'PUBLIC' }); results[uri] = true; } catch { results[uri] = false; }
     }
     const camera = src('screens/camera/CameraScreen.tsx') + src('screens/camera/PostVideoScreen.tsx');
     expect({ ...results, kiemTraDungLuong: /100\s*\*\s*1024\s*\*\s*1024|fileSize/.test(camera) })
@@ -101,9 +101,9 @@ describe('A. Unit Test', () => {
     const post = src('screens/camera/PostVideoScreen.tsx');
     const draft = await draftsStore.addDraft({ videoUrl: 'file:///d.mp4', title: '' });
     let serverChanTieuDeRong = true;
-    try { await createVideoPost({ videoUri: 'file:///a.mp4', title: '', description: '', visibility: 'PUBLIC' }); serverChanTieuDeRong = false; } catch { /* bị chặn */ }
+    try { await createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 10, durationSeconds: 60, title: '', description: '', visibility: 'PUBLIC' }); serverChanTieuDeRong = false; } catch { /* bị chặn */ }
     expect({
-      manHinhChanRong: /if \(!title\.trim\(\)\)/.test(post), maxLength100: /maxLength=\{100\}/.test(post),
+      manHinhChanRong: /!title\.trim\(\)\s*\|\|\s*title\.trim\(\)\.length > 100/.test(post), maxLength100: /maxLength=\{100\}/.test(post),
       nhapDeTrong: !!draft.id, serverChanTieuDeRong,
     }).toEqual({ manHinhChanRong: true, maxLength100: true, nhapDeTrong: true, serverChanTieuDeRong: true });
   });
@@ -271,4 +271,3 @@ describe('A. Unit Test', () => {
     expect(s).not.toMatch(/AudioTrack\[\]>/);
   });
 });
-

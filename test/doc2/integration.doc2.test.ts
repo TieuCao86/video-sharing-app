@@ -113,7 +113,7 @@ describe('B. Integration Test', () => {
   test.skip('TC53 – Phát video PRIVATE/đã xóa không mở được (cần RLS trên Supabase thật)', () => undefined);
   test('TC54 – Đăng video: thanh tiến trình, lưu Supabase Storage, xuất hiện ở My Videos', async () => {
     const u = await loginAs('Poster', 'it54@x.vn');
-    await createVideoPost({ videoUri: 'file:///a.mp4', title: 'Hoàng hôn', description: 'đẹp', visibility: 'PUBLIC' });
+    await createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 16, durationSeconds: 60, title: 'Hoàng hôn', description: 'đẹp', visibility: 'PUBLIC' });
     expect(await getUserVideos(u.id)).toHaveLength(1);
     expect([...storage.files.keys()][0]).toMatch(/^Video\//);
     const code = src('screens/camera/PostVideoScreen.tsx') + src('services/videoService.ts');
@@ -123,16 +123,16 @@ describe('B. Integration Test', () => {
     await loginAs('Big', 'it55@x.vn');
     (global as any).fetch = jest.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(120 * 1024 * 1024) }));
     let blocked = false;
-    try { await createVideoPost({ videoUri: 'file:///big.mp4', title: 'T', description: '', visibility: 'PUBLIC' }); } catch { blocked = true; }
+    try { await createVideoPost({ videoUri: 'file:///big.mp4', fileSizeBytes: 120 * 1024 * 1024, durationSeconds: 60, title: 'T', description: '', visibility: 'PUBLIC' }); } catch { blocked = true; }
     expect(blocked).toBe(true);
   });
   test('TC56 – Upload gián đoạn: báo lỗi, không còn dữ liệu dở dang', async () => {
     await loginAs('Net', 'it56@x.vn');
     failNext('videos', 'insert', { code: 'NETWORK', message: 'Network request failed' });
-    await expect(createVideoPost({ videoUri: 'file:///a.mp4', title: 'T', description: '', visibility: 'PUBLIC' })).rejects.toBeTruthy();
+    await expect(createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 16, durationSeconds: 60, title: 'T', description: '', visibility: 'PUBLIC' })).rejects.toBeTruthy();
     expect(db.videos ?? []).toHaveLength(0);
     expect(storage.files.size).toBe(0);
-    await createVideoPost({ videoUri: 'file:///a.mp4', title: 'T', description: '', visibility: 'PUBLIC' });
+    await createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 16, durationSeconds: 60, title: 'T', description: '', visibility: 'PUBLIC' });
     expect(db.videos).toHaveLength(1);
   });
   test('TC57 – Cập nhật video qua S18 (chủ sở hữu / người khác)', () => {

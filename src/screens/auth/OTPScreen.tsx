@@ -51,10 +51,11 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({
 
   const handleOtpChange = (value: string, index: number) => {
     setErrorMessage(null);
+    const digit = value.replace(/\D/g, '').slice(0, 1);
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = digit;
     setOtp(newOtp);
-    if (value && index < 5) {
+    if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -87,7 +88,7 @@ export const OTPScreen: React.FC<OTPScreenProps> = ({
 
   const handleVerifyPress = async () => {
     const fullOtp = otp.join("").trim();
-    if (fullOtp.length < 6) {
+    if (!/^\d{6}$/.test(fullOtp)) {
       setErrorMessage("Vui lòng nhập đủ 6 chữ số mã OTP.");
       return;
     }

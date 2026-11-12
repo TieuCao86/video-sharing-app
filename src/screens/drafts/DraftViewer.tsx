@@ -9,7 +9,6 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Alert,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,14 +26,17 @@ const VIEWABILITY_CONFIG = {
 interface DraftViewerProps {
   initialDraftId: string;
   onClose: () => void;
+  draftItems?: DraftItem[];
 }
 
 export const DraftViewer: React.FC<DraftViewerProps> = ({
   initialDraftId,
   onClose,
+  draftItems,
 }) => {
   const insets = useSafeAreaInsets();
-  const { drafts, deleteDraft, publishDraft } = useDraftsStore();
+  const { drafts: localDrafts, deleteDraft } = useDraftsStore();
+  const drafts = draftItems ?? localDrafts;
   const flatListRef = useRef<FlatList<DraftItem>>(null);
 
   // Find initial index
@@ -43,9 +45,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
 
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [draftToDelete, setDraftToDelete] = useState<DraftItem | null>(null);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [toastOpacity] = useState(() => new Animated.Value(0));
 
   // Scroll to initial draft on mount
   useEffect(() => {
@@ -58,25 +57,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
       }, 50);
     }
   }, [startIndex]);
-
-  const showToast = useCallback((message: string) => {
-    setToastMessage(message);
-    Animated.sequence([
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1500),
-      Animated.timing(toastOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setToastMessage(null);
-    });
-  }, [toastOpacity]);
 
   // Handle vertical paging viewability
   const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
@@ -129,28 +109,8 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
   };
 
   // Publish Action
-  const handlePublishPress = (draft: DraftItem) => {
-    if (isPublishing) return; // Prevent double taps
-
-    setIsPublishing(true);
-    const remainingCount = drafts.length - 1;
-
-    // Publish the draft
-    publishDraft(draft.id);
-    showToast('Draft published');
-
-    setTimeout(() => {
-      setIsPublishing(false);
-      if (remainingCount <= 0) {
-        // No drafts left: return to S21
-        onClose();
-      } else {
-        // Move to next available draft
-        if (currentIndex >= remainingCount) {
-          setCurrentIndex(Math.max(0, remainingCount - 1));
-        }
-      }
-    }, 600);
+  const handlePublishPress = (_draft: DraftItem) => {
+    Alert.alert('Tính năng đang được phát triển', 'Chức năng Publish bản nháp sẽ sớm được hỗ trợ.');
   };
 
   const renderDraftItem = ({ item, index }: { item: DraftItem; index: number }) => (
@@ -159,7 +119,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
       isActive={index === currentIndex && !draftToDelete}
       onDelete={handleDeletePress}
       onPublish={handlePublishPress}
-      isPublishing={isPublishing}
     />
   );
 
@@ -202,25 +161,6 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
           <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
-
-      {/* Success Toast Banner */}
-      {toastMessage && (
-        <Animated.View
-          style={[
-            styles.toastContainer,
-            {
-              top: Math.max(insets.top, 20) + 60,
-              opacity: toastOpacity,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <View style={styles.toastCard}>
-            <Ionicons name="checkmark-circle" size={22} color="#34C759" />
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        </Animated.View>
-      )}
 
       {/* Delete Confirmation Dialog Modal */}
       <Modal

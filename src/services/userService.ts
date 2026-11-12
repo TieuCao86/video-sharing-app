@@ -173,9 +173,19 @@ export async function updateProfile(
   userId: string,
   updates: { display_name?: string; bio?: string; avatar_url?: string }
 ): Promise<boolean> {
+  const sanitize = (value: string) => value
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<\/?[a-z][^>]*>/gi, '')
+    .replace(/[\u0000-\u0008\u000B\u000C-\u001F\u007F]/g, '')
+    .trim();
+  const safeUpdates = {
+    ...updates,
+    ...(updates.bio !== undefined ? { bio: sanitize(updates.bio) } : {}),
+    ...(updates.display_name !== undefined ? { display_name: sanitize(updates.display_name) } : {}),
+  };
   const { data, error, status } = await supabase
     .from('users')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...safeUpdates, updated_at: new Date().toISOString() })
     .eq('auth_id', userId)
     .select();
 

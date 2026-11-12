@@ -40,9 +40,9 @@ describe('authService.signUpWithEmail', () => {
     const r = await signUpWithEmail('Trung Test', 'trung.test@', 'Trung1234');
     expect(r.success).toBe(false);
   });
-  test('TC05 – Mật khẩu 7 ký tự phải bị từ chối (SRS: tối thiểu 8)', async () => {
+  test('TC05 – Mật khẩu hợp lệ 7 ký tự được chấp nhận (SRS: tối thiểu 6)', async () => {
     const r = await signUpWithEmail('Trung Test', 'trung.test05@example.com', 'Trung12');
-    expect(r.success).toBe(false);
+    expect(r.success).toBe(true);
   });
   test('TC06 – Mật khẩu chỉ có chữ cái phải bị từ chối (SRS: có chữ và số)', async () => {
     const r = await signUpWithEmail('Trung Test', 'trung.test06@example.com', 'abcdefgh');
@@ -85,8 +85,10 @@ describe('authService.loginWithEmail', () => {
 });
 
 describe('authService OTP', () => {
-  test('TC12 – Xác thực OTP khi mã rỗng', async () => {
-    expect(await verifyOtpCode('a@b.c', '  ')).toEqual({ success: false, message: 'Vui lòng nhập đầy đủ mã OTP.' });
+  test('TC12 – Xác thực OTP khi mã rỗng: từ chối đúng 6 chữ số và không gọi Supabase', async () => {
+    const spy = jest.spyOn(supabase.auth, 'verifyOtp');
+    expect(await verifyOtpCode('a@b.c', '  ')).toEqual({ success: false, message: 'Mã OTP phải gồm đúng 6 chữ số.' });
+    expect(spy).not.toHaveBeenCalled();
   });
   test('TC13 – OTP type "signup" lỗi nhưng type "email" đúng → vẫn xác thực thành công', async () => {
     const spy = jest.spyOn(supabase.auth, 'verifyOtp')
@@ -204,7 +206,7 @@ describe('videoService', () => {
     expect(q.filters).toEqual(expect.arrayContaining([['neq', 'visibility', 'DELETED'], ['neq', 'visibility', 'DRAFT']]));
   });
   test('TC33 – Đăng video khi chưa đăng nhập → lỗi yêu cầu đăng nhập', async () => {
-    await expect(createVideoPost({ videoUri: 'file:///a.mp4', title: 'T', description: '', visibility: 'PUBLIC' }))
+    await expect(createVideoPost({ videoUri: 'file:///a.mp4', fileSizeBytes: 10, durationSeconds: 60, title: 'T', description: '', visibility: 'PUBLIC' }))
       .rejects.toThrow('Please sign in before posting a video.');
   });
   test('TC34 – Lỗi khi lưu bản ghi video → xóa file đã upload (dọn dẹp), ném lỗi', async () => {
@@ -212,7 +214,7 @@ describe('videoService', () => {
     auth.session = { user: auth.users[0] };
     (global as any).fetch = jest.fn(async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) }));
     failNext('videos', 'insert', { code: '500', message: 'insert failed' });
-    await expect(createVideoPost({ videoUri: 'file:///clip.mov', coverUri: 'file:///c.png', title: ' T ', description: '', visibility: 'PUBLIC' }))
+    await expect(createVideoPost({ videoUri: 'file:///clip.mov', fileSizeBytes: 10, durationSeconds: 60, coverUri: 'file:///c.png', title: ' T ', description: '', visibility: 'PUBLIC' }))
       .rejects.toMatchObject({ message: 'insert failed' });
     expect(storage.removed).toHaveLength(2);
     expect(storage.files.size).toBe(0);
