@@ -175,10 +175,16 @@ describe('B. Integration Test', () => {
     await toggleFollowUser(alice, bob);
     expect(await getFollowCounts(bob)).toEqual({ following: 0, followers: 0 });
   });
-  test('TC64 – Ẩn gợi ý (X) không xuất hiện lại sau khi tải lại [mã nguồn UserProfileView]', () => {
+    test('TC64 – Ẩn gợi ý (X) không xuất hiện lại sau khi tải lại', async () => {
+    const { hideSuggestion, getHiddenSuggestionIds } = await import('../../src/services/suggestionService');
+    await hideSuggestion('viewer-1', 'u-2');
+    await hideSuggestion('viewer-1', 'u-2'); // bấm X lần 2 không lưu trùng
+    // "Tải lại màn hình": đọc lại từ bộ nhớ thiết bị
+    expect(await getHiddenSuggestionIds('viewer-1')).toEqual(['u-2']);
+    expect(await getHiddenSuggestionIds('viewer-2')).toEqual([]); // mỗi tài khoản một danh sách riêng
     const s = src('screens/profile/views/UserProfileView.tsx');
-    const persisted = /AsyncStorage|supabase\.from\(['"]hidden|hideSuggestion/.test(s);
-    expect(persisted).toBe(true);
+    expect(s).toMatch(/getHiddenSuggestionIds\(currentUserId\)/);
+    expect(s).toMatch(/hideSuggestion\(currentUserId, id\)/);
   });
   test('TC65 – Kho nhạc: tab For you/Trending/Saved, tìm, lưu 1 lần', () => {
     const fns = Object.keys(audioService);

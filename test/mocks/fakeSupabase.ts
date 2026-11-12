@@ -10,6 +10,7 @@ const UNIQUE: Record<string, string[]> = {
   follows: ['follower_id', 'following_id'],
   likes: ['user_id', 'video_id'],
   comment_likes: ['user_id', 'comment_id'],
+  saved_audio_tracks: ['user_id', 'audio_track_id'],
 };
 
 let seq = 0;
@@ -72,6 +73,7 @@ class Query implements PromiseLike<any> {
   private payload: any;
   private orderBy?: { col: string; asc: boolean };
   private lim?: number;
+  private off = 0;
   private mode: 'many' | 'single' | 'maybe' = 'many';
   private returning = false;
   constructor(private t: string) {}
@@ -98,6 +100,7 @@ class Query implements PromiseLike<any> {
   }
   order(col: string, o?: { ascending?: boolean }) { this.orderBy = { col, asc: o?.ascending ?? true }; return this; }
   limit(n: number) { this.lim = n; return this; }
+  range(from: number, to: number) { this.off = from; this.lim = to - from + 1; return this; }
   single() { this.mode = 'single'; return this; }
   maybeSingle() { this.mode = 'maybe'; return this; }
 
@@ -144,7 +147,7 @@ class Query implements PromiseLike<any> {
       const { col, asc } = this.orderBy;
       res.sort((a, b) => (a[col] > b[col] ? 1 : a[col] < b[col] ? -1 : 0) * (asc ? 1 : -1));
     }
-    if (this.lim !== undefined) res = res.slice(0, this.lim);
+    if (this.lim !== undefined || this.off) res = res.slice(this.off, this.lim !== undefined ? this.off + this.lim : undefined);
     if (this.countMode) return { data: this.head ? null : res, count: res.length, error: null };
     return this.shape(res);
   }

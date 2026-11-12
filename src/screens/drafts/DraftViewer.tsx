@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,15 +9,18 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DraftItem, useDraftsStore } from '../../store/useDraftsStore';
-import { DraftVideoItem } from './DraftVideoItem';
-import { CustomButton } from '../../components/buttons/CustomButton';
-import { colors } from '../../constants/colors';
+  Animated,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
+import { RootStackParamList } from "../../types/navigation";
+import { DraftItem, useDraftsStore } from "../../store/useDraftsStore";
+import { DraftVideoItem } from "./DraftVideoItem";
+import { CustomButton } from "../../components/buttons/CustomButton";
+import { colors } from "../../constants/colors";
 
-const { height } = Dimensions.get('window');
+const { height } = Dimensions.get("window");
 
 const VIEWABILITY_CONFIG = {
   itemVisiblePercentThreshold: 50,
@@ -58,6 +61,28 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
     }
   }, [startIndex]);
 
+  const showToast = useCallback(
+    (message: string) => {
+      setToastMessage(message);
+      Animated.sequence([
+        Animated.timing(toastOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1500),
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setToastMessage(null);
+      });
+    },
+    [toastOpacity],
+  );
+
   // Handle vertical paging viewability
   const handleViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
@@ -74,21 +99,21 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
 
     // Also trigger native Alert for native dialog confirmation
     Alert.alert(
-      'Delete draft?',
+      "Delete draft?",
       "Delete this draft? This can't be undone.",
       [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          text: "Cancel",
+          style: "cancel",
           onPress: () => setDraftToDelete(null),
         },
         {
-          text: 'Delete',
-          style: 'destructive',
+          text: "Delete",
+          style: "destructive",
           onPress: () => confirmDelete(draft.id),
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -113,7 +138,13 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
     Alert.alert('Tính năng đang được phát triển', 'Chức năng Publish bản nháp sẽ sớm được hỗ trợ.');
   };
 
-  const renderDraftItem = ({ item, index }: { item: DraftItem; index: number }) => (
+  const renderDraftItem = ({
+    item,
+    index,
+  }: {
+    item: DraftItem;
+    index: number;
+  }) => (
     <DraftVideoItem
       draft={item}
       isActive={index === currentIndex && !draftToDelete}
@@ -146,10 +177,7 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
 
       {/* Back Arrow Button Overlay (Top-Left, respecting Safe Area) */}
       <View
-        style={[
-          styles.backButtonContainer,
-          { top: Math.max(insets.top, 16) },
-        ]}
+        style={[styles.backButtonContainer, { top: Math.max(insets.top, 16) }]}
       >
         <TouchableOpacity
           style={styles.backButton}
@@ -209,10 +237,10 @@ export const DraftViewer: React.FC<DraftViewerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: "#000000",
   },
   backButtonContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     zIndex: 100,
   },
@@ -220,54 +248,54 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   toastContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     zIndex: 200,
   },
   toastCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 24,
     gap: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 6,
   },
   toastText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   // Confirmation Dialog
   dialogOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
   },
   dialogCard: {
-    width: '100%',
+    width: "100%",
     maxWidth: 320,
     backgroundColor: colors.background,
     borderRadius: 20,
     paddingHorizontal: 24,
     paddingTop: 28,
     paddingBottom: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -277,26 +305,26 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 59, 48, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   dialogTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: colors.text,
     marginBottom: 8,
   },
   dialogMessage: {
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 24,
   },
   dialogButtonRow: {
-    flexDirection: 'row',
-    width: '100%',
+    flexDirection: "row",
+    width: "100%",
     gap: 12,
   },
   dialogCancelButton: {
@@ -304,17 +332,17 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#D0D0D0',
-    backgroundColor: 'transparent',
+    borderColor: "#D0D0D0",
+    backgroundColor: "transparent",
   },
   dialogCancelText: {
-    color: '#666666',
-    fontWeight: '600',
+    color: "#666666",
+    fontWeight: "600",
   },
   dialogDeleteButton: {
     flex: 1,
     height: 44,
     borderRadius: 10,
-    backgroundColor: '#FF3B30',
+    backgroundColor: "#FF3B30",
   },
 });

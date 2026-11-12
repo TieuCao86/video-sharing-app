@@ -30,12 +30,19 @@ export type RootStackParamList = {
   AddAudio: {
     videoUri?: string;
   };
-  PostVideo: {
+    PostVideo: {
     videoUri: string;
     durationSeconds: number;
     fileSizeBytes: number;
     audioTrackId?: string;
     audioTitle?: string;
+    /** Mở lại từ My Drafts (UC30): dữ liệu bản nháp đã lưu */
+    draftId?: string;
+    title?: string;
+    description?: string;
+    topicId?: string;
+    visibility?: string;
+    coverUri?: string;
   };
   VideoList?: {
     title: string;
