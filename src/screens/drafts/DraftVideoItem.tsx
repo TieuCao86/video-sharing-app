@@ -9,10 +9,43 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraftItem } from '../../store/useDraftsStore';
 
 const { width, height } = Dimensions.get('window');
+
+const ActiveDraftVideo: React.FC<{ uri: string }> = ({ uri }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const player = useVideoPlayer(uri, (videoPlayer) => {
+    videoPlayer.loop = true;
+  });
+  useFocusEffect(React.useCallback(() => {
+    player.play();
+    return () => player.pause();
+  }, [player]));
+  useEffect(() => {
+    const status = player.addListener('statusChange', (event: any) => {
+      if (event.status === 'readyToPlay') setLoading(false);
+      if (event.status === 'error') {
+        setError(event.error?.message || 'Failed to load video');
+        setLoading(false);
+      }
+    });
+    const playingChange = player.addListener('playingChange', (event: any) => setPlaying(event.isPlaying ?? player.playing));
+    return () => { status.remove(); playingChange.remove(); };
+  }, [player]);
+  return (
+    <TouchableOpacity style={styles.videoContainer} activeOpacity={1} onPress={() => player.playing ? player.pause() : player.play()}>
+      <VideoView style={styles.video} player={player} allowsPictureInPicture nativeControls={false} />
+      {!playing && !loading && !error && <View style={styles.playIconOverlay}><Ionicons name="play" size={80} color="rgba(255,255,255,0.9)" /></View>}
+      {loading && <View style={styles.loadingContainer}><ActivityIndicator size="large" color="#FF2442" /><Text style={styles.loadingText}>Loading draft video...</Text></View>}
+      {error && <View style={styles.errorContainer}><Ionicons name="alert-circle-outline" size={48} color="#FF2442" /><Text style={styles.errorText}>{error}</Text></View>}
+    </TouchableOpacity>
+  );
+};
 
 interface DraftVideoItemProps {
   draft: DraftItem;
@@ -29,94 +62,13 @@ export const DraftVideoItem: React.FC<DraftVideoItemProps> = ({
   onPublish,
   isPublishing = false,
 }) => {
-  const [isVideoLoading, setIsVideoLoading] = useState(true);
-  const [videoError, setVideoError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const insets = useSafeAreaInsets();
   const bottomOffset = Math.max(insets.bottom, 16);
-
-  // Create video player for the draft video
-  const player = useVideoPlayer(draft.videoUrl, (p) => {
-    p.loop = true;
-  });
-
-  // Auto play/pause based on active status
-  useEffect(() => {
-    if (isActive) {
-      player.play();
-    } else {
-      player.pause();
-    }
-  }, [isActive, player]);
-
-  // Monitor player status
-  useEffect(() => {
-    const subscription = player.addListener('statusChange', () => {
-      if (player.status === 'readyToPlay') {
-        setIsVideoLoading(false);
-      }
-      if (player.status === 'error') {
-        setVideoError('Failed to load video');
-        setIsVideoLoading(false);
-      }
-    });
-
-    const playSubscription = player.addListener('playingChange', (event: any) => {
-      setIsPlaying(event?.isPlaying ?? player.playing);
-    });
-
-    return () => {
-      subscription.remove();
-      playSubscription.remove();
-    };
-  }, [player]);
-
-  const handleTogglePlayPause = () => {
-    if (player.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
-  };
 
   return (
     <View style={styles.container}>
       {/* Video Player */}
-      <TouchableOpacity
-        style={styles.videoContainer}
-        activeOpacity={1}
-        onPress={handleTogglePlayPause}
-      >
-        <VideoView
-          style={styles.video}
-          player={player}
-          allowsPictureInPicture
-          nativeControls={false}
-        />
-
-        {/* Play/Pause Icon Overlay */}
-        {!isPlaying && !isVideoLoading && (
-          <View style={styles.playIconOverlay}>
-            <Ionicons name="play" size={80} color="rgba(255,255,255,0.9)" />
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {/* Loading Indicator */}
-      {isVideoLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#FF2442" />
-          <Text style={styles.loadingText}>Loading draft video...</Text>
-        </View>
-      )}
-
-      {/* Error Message */}
-      {videoError && (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#FF2442" />
-          <Text style={styles.errorText}>Failed to load video</Text>
-        </View>
-      )}
+      {isActive && <ActiveDraftVideo uri={draft.videoUrl} />}
 
       {/* Semi-transparent Overlay */}
       <View style={styles.overlay} pointerEvents="none" />

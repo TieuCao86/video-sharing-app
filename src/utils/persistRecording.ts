@@ -36,6 +36,10 @@ export async function persistRecording(sourceUri: string): Promise<string> {
   const filename = `recording-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
   const destination = new File(directory, filename);
   await source.copy(destination);
+  if (!destination.exists || !destination.size || destination.size !== source.size) {
+    if (destination.exists) destination.delete();
+    throw new Error('Could not save a complete local copy of the video. Please try again.');
+  }
   return destination.uri;
 }
 
