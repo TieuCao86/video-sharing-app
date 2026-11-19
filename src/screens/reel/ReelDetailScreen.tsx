@@ -33,6 +33,7 @@ import {
   addComment,
   toggleLikeComment,
   toggleFollowUser,
+  softDeleteVideo,
   VideoDetailItem,
   CommentItem,
 } from "../../services";
@@ -85,8 +86,9 @@ export const ReelDetailScreen: React.FC = () => {
   const { height: screenHeight } = useWindowDimensions();
   
   const initialVideoId = route.params?.videoId;
-  // Lấy db id của user đang đăng nhập (dùng để check isLiked & tạo notification)
-  const currentDbUserId = user?.id ?? null;
+  // Lấy db id & auth id của user đang đăng nhập (chỉ khi đã đăng nhập)
+  const currentDbUserId = isLoggedIn && user?.id ? user.id : null;
+  const currentAuthId = isLoggedIn && user?.auth_id ? user.auth_id : null;
 
   const [videos, setVideos] = useState<VideoDetailItem[]>([]);
   const [followingCreatorIds, setFollowingCreatorIds] = useState<Set<string>>(new Set());
@@ -103,6 +105,11 @@ export const ReelDetailScreen: React.FC = () => {
   const [postingComment, setPostingComment] = useState(false);
   const [commentVideoId, setCommentVideoId] = useState<string | null>(null);
   const [likingCommentIds, setLikingCommentIds] = useState<Set<string>>(new Set());
+
+  // Owner action menu state
+  const [ownerMenuVisible, setOwnerMenuVisible] = useState(false);
+  const [ownerMenuVideoId, setOwnerMenuVideoId] = useState<string | null>(null);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
 
   // Fetch danh sách video từ Supabase
   useEffect(() => {
@@ -317,6 +324,72 @@ export const ReelDetailScreen: React.FC = () => {
     }
   }).current;
 
+  // Hiện menu chủ sở hữu (xóa / chỉnh sửa)
+  const handleMorePress = (videoId: string) => {
+    setOwnerMenuVideoId(videoId);
+    setOwnerMenuVisible(true);
+  };
+
+  // Xóa mềm video
+  const handleDeleteVideo = () => {
+    if (!ownerMenuVideoId || !user?.id) return;
+    const videoId = ownerMenuVideoId;
+    Alert.alert(
+      'Xóa video',
+      'Video sẽ bị ẩn khỏi ứng dụng. Bạn có chắc chắn muốn xóa?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            setOwnerMenuVisible(false);
+            setDeletingVideoId(videoId);
+            try {
+              await softDeleteVideo(videoId, user.id);
+              setVideos((prev) => prev.filter((v) => v.id !== videoId));
+              // Điều chỉnh index nếu cần
+              setCurrentIndex((prev) => Math.max(0, prev > 0 ? prev - 1 : 0));
+            } catch (err: any) {
+              Alert.alert('Không thể xóa', err?.message || 'Vui lòng thử lại.');
+            } finally {
+              setDeletingVideoId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // Điều hướng sang màn hình chỉnh sửa
+  const handleEditVideo = () => {
+    if (!ownerMenuVideoId) return;
+    const video = videos.find((v) => v.id === ownerMenuVideoId);
+    if (!video) return;
+    setOwnerMenuVisible(false);
+
+    // Tách description và hashtags từ caption/description
+    const rawDescription = video.caption || '';
+    const hashtagRegex = /#([A-Za-z0-9_]{1,30})/g;
+    const hashtags: string[] = [];
+    let match;
+    while ((match = hashtagRegex.exec(rawDescription)) !== null) {
+      hashtags.push(match[1]);
+    }
+    const descriptionOnly = rawDescription
+      .replace(/#[A-Za-z0-9_]{1,30}/g, '')
+      .trim();
+
+    navigation.navigate('EditVideo', {
+      videoId: video.id,
+      title: video.title,
+      description: descriptionOnly,
+      hashtags: hashtags.join(' '),
+      topicId: undefined,
+      visibility: video.visibility,
+    });
+  };
+
   if (loading) {
     return (
       <View style={styles.centerLoading}>
@@ -386,9 +459,58 @@ export const ReelDetailScreen: React.FC = () => {
                 }
               }
             }}
+            onMorePress={
+              isLoggedIn &&
+              Boolean(item.creator.id) &&
+              (item.creator.id === currentDbUserId ||
+                (Boolean(currentAuthId) && item.creator.id === currentAuthId))
+                ? () => handleMorePress(item.id)
+                : undefined
+            }
           />
         )}
       />
+
+      {/* OWNER ACTION MENU (xóa / chỉnh sửa) */}
+      <Modal
+        visible={ownerMenuVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setOwnerMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.menuBackdrop}
+          activeOpacity={1}
+          onPress={() => setOwnerMenuVisible(false)}
+        >
+          <View style={[styles.menuSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.menuHandle} />
+            <Text style={styles.menuTitle}>Tùy chọn video</Text>
+
+            {/* Nút Chỉnh sửa */}
+            <TouchableOpacity style={styles.menuItem} onPress={handleEditVideo}>
+              <View style={[styles.menuIconBox, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="create-outline" size={22} color="#4F6EF7" />
+              </View>
+              <View style={styles.menuItemTextBox}>
+                <Text style={styles.menuItemTitle}>Chỉnh sửa thông tin</Text>
+                <Text style={styles.menuItemDesc}>Cập nhật tiêu đề, hashtag, chủ đề, quyền xem</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Nút Xóa */}
+            <TouchableOpacity style={styles.menuItem} onPress={handleDeleteVideo}>
+              <View style={[styles.menuIconBox, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              </View>
+              <View style={styles.menuItemTextBox}>
+                <Text style={[styles.menuItemTitle, { color: '#EF4444' }]}>Xóa video</Text>
+                <Text style={styles.menuItemDesc}>Video sẽ bị ẩn khỏi ứng dụng</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* MODAL COMMENT (BOTTOM SHEET S04) */}
       <Modal
@@ -491,6 +613,14 @@ export const ReelDetailScreen: React.FC = () => {
       </Modal>
 
       <LoginRequiredModal />
+
+      {/* Delete loading overlay */}
+      {deletingVideoId && (
+        <View style={styles.deleteOverlay}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+          <Text style={styles.deleteOverlayText}>Đang xóa...</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -592,5 +722,75 @@ const styles = StyleSheet.create({
   sendBtn: {
     marginLeft: 10,
     padding: 6,
+  },
+  // Delete loading overlay
+  deleteOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
+  deleteOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+  // Owner action menu styles
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  menuSheet: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  menuHandle: {
+    alignSelf: "center",
+    width: 36,
+    height: 4,
+    marginBottom: 16,
+    borderRadius: 2,
+    backgroundColor: "#D5D5DA",
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#17171B",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#F0F0F0",
+  },
+  menuIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  menuItemTextBox: {
+    flex: 1,
+  },
+  menuItemTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#17171B",
+    marginBottom: 2,
+  },
+  menuItemDesc: {
+    fontSize: 12,
+    color: "#85858E",
   },
 });

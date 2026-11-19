@@ -18,6 +18,7 @@ import { ChangePasswordScreen } from '../screens/settings/ChangePasswordScreen';
 import { DraftsScreen } from '../screens/drafts/DraftsScreen';
 import { DraftViewerScreen } from '../screens/drafts/DraftViewerScreen';
 import PostVideoScreen from '../screens/camera/PostVideoScreen';
+import EditVideoScreen from '../screens/reel/EditVideoScreen';
 import { useAuthStore } from '../store/useAuthStore';
 import { checkSession } from '../services/authService';
 
@@ -138,6 +139,13 @@ export const AppNavigator = () => {
           name="DraftViewer"
           component={DraftViewerScreen}
           options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+        />
+
+        {/* Edit Video Info */}
+        <Stack.Screen
+          name="EditVideo"
+          component={EditVideoScreen}
+          options={{ presentation: 'card', animation: 'slide_from_right' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
