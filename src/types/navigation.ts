@@ -64,6 +64,14 @@ export type RootStackParamList = {
   DraftViewer?: {
     draftId?: string;
   };
+  EditVideo: {
+    videoId: string;
+    title: string;
+    description: string;
+    hashtags: string;
+    topicId?: string;
+    visibility: string;
+  };
 };
 
 export type BottomTabParamList = {

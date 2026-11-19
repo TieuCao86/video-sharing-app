@@ -696,3 +696,63 @@ export async function searchVideosWithStatus(
 export async function searchVideos(query: string): Promise<VideoDetailItem[]> {
   return (await searchVideosWithStatus(query)).videos;
 }
+
+/**
+ * Xóa mềm video — đặt visibility = 'DELETED' (UC_DELETE_VIDEO)
+ * Chỉ chủ sở hữu video mới được thực hiện.
+ */
+export async function softDeleteVideo(videoId: string, creatorId: string): Promise<void> {
+  const { error } = await supabase
+    .from('videos')
+    .update({ visibility: 'DELETED', updated_at: new Date().toISOString() })
+    .eq('id', videoId)
+    .eq('creator_id', creatorId);
+
+  if (error) throw error;
+}
+
+export interface UpdateVideoInput {
+  title: string;
+  description: string;
+  hashtags: string[];
+  topicId?: string;
+  visibility: 'PUBLIC' | 'PRIVATE';
+}
+
+/**
+ * Cập nhật thông tin video (title, description, hashtags, topic, visibility)
+ * Chỉ chủ sở hữu video mới được thực hiện.
+ */
+export async function updateVideoInfo(
+  videoId: string,
+  creatorId: string,
+  input: UpdateVideoInput,
+): Promise<void> {
+  const title = input.title.trim();
+  if (title.length < 1 || title.length > 100) throw new Error('Tiêu đề phải từ 1 đến 100 ký tự.');
+  if (input.description.length > 500) throw new Error('Mô tả tối đa 500 ký tự.');
+  if (input.hashtags.length > 10 || input.hashtags.some((tag) => !/^[A-Za-z0-9_]{1,30}$/.test(tag))) {
+    throw new Error('Tối đa 10 hashtag, mỗi hashtag từ 1-30 ký tự chữ, số hoặc gạch dưới.');
+  }
+
+  const descriptionWithHashtags = [
+    input.description.trim(),
+    ...input.hashtags.map((tag) => `#${tag}`),
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const { error } = await supabase
+    .from('videos')
+    .update({
+      title,
+      description: descriptionWithHashtags,
+      topic_id: input.topicId || null,
+      visibility: input.visibility,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', videoId)
+    .eq('creator_id', creatorId);
+
+  if (error) throw error;
+}

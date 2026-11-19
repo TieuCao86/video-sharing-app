@@ -36,6 +36,8 @@ interface VideoItemProps {
   onFollowPress: () => void;
   isFollowLoading: boolean;
   onCreatorPress: () => void;
+  /** Hiển thị nút ... (chỉ khi là chủ sở hữu video) */
+  onMorePress?: () => void;
 }
 
 export const VideoItem: React.FC<VideoItemProps> = ({
@@ -51,6 +53,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   onFollowPress,
   isFollowLoading,
   onCreatorPress,
+  onMorePress,
 }) => {
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [videoError, setVideoError] = useState<string | null>(null);
@@ -80,7 +83,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
       if (player.status === 'readyToPlay') {
         setIsVideoLoading(false);
       }
-      
+
       if (player.status === 'error') {
         setVideoError('Failed to load video');
         setIsVideoLoading(false);
@@ -105,7 +108,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
   return (
     <View style={[styles.container, { height: itemHeight }]}>
       {/* Video Player */}
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.videoContainer}
         activeOpacity={1}
         onPress={handleTogglePlayPause}
@@ -117,7 +120,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
           allowsPictureInPicture
           nativeControls={false}
         />
-        
+
         {/* Play/Pause Icon Overlay */}
         {!isPlaying && !isVideoLoading && (
           <View style={styles.playIconOverlay}>
@@ -211,9 +214,16 @@ export const VideoItem: React.FC<VideoItemProps> = ({
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        {onMorePress ? (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={onMorePress}
+            accessibilityRole="button"
+            accessibilityLabel="Tùy chọn video"
+          >
+            <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {/* Bottom Info (Creator, Caption, Music) */}
