@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Modal,
   TouchableWithoutFeedback,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,27 +30,7 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleLogoutPress = () => {
-    // Show custom modal dialog (works across Web, iOS, Android, and testing environments)
     setShowLogoutConfirm(true);
-
-    // Also trigger native Alert for platforms that expect Alert.alert
-    Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => setShowLogoutConfirm(false),
-        },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: handleConfirmLogout,
-        },
-      ],
-      { cancelable: true }
-    );
   };
 
   return (
