@@ -14,7 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { CustomButton } from '../../components/buttons/CustomButton';
 import { BrandLogo } from '../../components/common/BrandLogo';
-import { getSignupPasswordError, isValidSignupEmail, signUpWithEmail } from '../../services/authService';
+import {
+  checkEmailExists,
+  getSignupPasswordError,
+  isValidSignupEmail,
+  signUpWithEmail,
+} from '../../services/authService';
 
 interface SignUpScreenProps {
   onSignUp?: () => void;
@@ -34,6 +39,19 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleEmailBlur = async () => {
+    const trimmed = email.trim();
+    if (!trimmed || !isValidSignupEmail(trimmed)) return;
+    try {
+      const exists = await checkEmailExists(trimmed);
+      if (exists) {
+        setErrorMessage('Email này đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.');
+      }
+    } catch {
+      // Bỏ qua lỗi kết nối nền
+    }
+  };
 
   const handleSignUpPress = async () => {
     setErrorMessage(null);
@@ -124,6 +142,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   setEmail(text);
                   setErrorMessage(null);
                 }}
+                onBlur={handleEmailBlur}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />

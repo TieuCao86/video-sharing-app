@@ -27,6 +27,27 @@ export function getSignupPasswordError(password: string): string | null {
 }
 
 /**
+ * Kiểm tra xem email đã tồn tại trong database (bảng users) chưa
+ */
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const trimmedEmail = email.trim();
+  if (!trimmedEmail) return false;
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('email', trimmedEmail)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error checking email exists:', error);
+    return false;
+  }
+
+  return !!data;
+}
+
+/**
  * Đăng nhập bằng Email và Password (UC02 - S12)
  */
 export async function loginWithEmail(email: string, password: string): Promise<AuthResponse> {
@@ -102,6 +123,15 @@ export async function signUpWithEmail(
   }
 
   try {
+    // 1. Kiểm tra email đã tồn tại trong bảng users chưa
+    const emailExists = await checkEmailExists(trimmedEmail);
+    if (emailExists) {
+      return {
+        success: false,
+        message: 'Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.',
+      };
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: trimmedEmail,
       password: password,
@@ -113,7 +143,25 @@ export async function signUpWithEmail(
     });
 
     if (error) {
+      if (
+        error.message?.toLowerCase().includes('already registered') ||
+        error.message?.toLowerCase().includes('already exists') ||
+        error.status === 422
+      ) {
+        return {
+          success: false,
+          message: 'Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.',
+        };
+      }
       return { success: false, message: error.message };
+    }
+
+    // Supabase trả về user với identities rỗng khi email đã tồn tại trong Auth (bảo vệ chống dò email)
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      return {
+        success: false,
+        message: 'Email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.',
+      };
     }
 
     if (data.user) {
