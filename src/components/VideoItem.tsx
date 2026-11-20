@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface VideoData {
   id: string;
+  title?: string;
   url: string;
   creatorId: string;
   creator: string;
@@ -226,7 +227,7 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         ) : null}
       </View>
 
-      {/* Bottom Info (Creator, Caption, Music) */}
+      {/* Bottom Info (Creator, Title, Caption, Music) */}
       <View style={[styles.bottomInfoContainer, { bottom: 12 + bottomOffset }]}>
         <TouchableOpacity
           onPress={onCreatorPress}
@@ -237,7 +238,18 @@ export const VideoItem: React.FC<VideoItemProps> = ({
         >
           <Text style={styles.creatorName}>@{video.creator}</Text>
         </TouchableOpacity>
-        <Text style={styles.caption} numberOfLines={2}>{video.caption}</Text>
+
+        {video.title ? (
+          <Text style={styles.title} numberOfLines={2}>
+            {video.title}
+          </Text>
+        ) : null}
+
+        {video.caption && video.caption !== video.title ? (
+          <Text style={styles.caption} numberOfLines={2}>
+            {video.caption}
+          </Text>
+        ) : null}
 
         <View style={styles.audioRow}>
           <Ionicons name="musical-note" size={14} color="#FFFFFF" />
@@ -325,12 +337,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 6,
+    marginBottom: 4,
+  },
+  title: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   caption: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 13,
     marginBottom: 8,
+    lineHeight: 18,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   audioRow: {
     flexDirection: 'row',

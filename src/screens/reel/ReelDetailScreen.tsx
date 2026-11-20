@@ -40,6 +40,7 @@ import {
 
 export interface VideoData {
   id: string;
+  title?: string;
   url: string;
   creator: string;
   caption: string;
@@ -49,6 +50,7 @@ export interface VideoData {
 export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   {
     id: 'e0000001-0000-4000-8000-000000000001',
+    title: 'Amazing sunset timelapse',
     url: 'https://dzxgzevcljyueztpbnir.supabase.co/storage/v1/object/public/Video/360429_small.mp4',
     creator: 'Laura',
     caption: 'Amazing sunset timelapse #nature #sunset',
@@ -56,6 +58,7 @@ export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   },
   {
     id: 'e0000001-0000-4000-8000-000000000002',
+    title: 'Travel vlog - Paris adventure',
     url: 'https://www.w3schools.com/html/mov_bbb.mp4',
     creator: 'William',
     caption: 'Travel vlog - Paris adventure #travel #paris',
@@ -63,6 +66,7 @@ export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   },
   {
     id: 'e0000001-0000-4000-8000-000000000003',
+    title: 'She waits for me',
     url: 'https://download.samplelib.com/mp4/sample-5s.mp4',
     creator: 'Julia',
     caption: 'She waits for me #lovepet #cat',
@@ -70,6 +74,7 @@ export const MOCK_VIDEOS_ARRAY: VideoData[] = [
   },
   {
     id: 'e0000001-0000-4000-8000-000000000004',
+    title: 'How to cook perfect pasta',
     url: 'https://download.samplelib.com/mp4/sample-10s.mp4',
     creator: 'Peter',
     caption: 'How to cook perfect pasta #cooking #food',
@@ -431,6 +436,7 @@ export const ReelDetailScreen: React.FC = () => {
           <VideoItem
             video={{
               id: item.id,
+              title: item.title,
               url: item.videoUrl,
               creatorId: item.creator.id,
               creator: item.creator.name,
