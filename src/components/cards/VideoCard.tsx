@@ -22,6 +22,7 @@ interface VideoCardProps {
         coverUrl?: string;
         views?: string;
         timeAgo?: string;
+        isLiked?: boolean;
       };
   onPress?: () => void;
   type?: 'trending' | 'profile';
@@ -42,6 +43,9 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   type = 'trending',
   showHeartIcon = false,
 }) => {
+  const isLiked = isVideoItem(item)
+    ? !!(item as any).isLiked
+    : !!item.isLiked;
   const thumbnailUri = isVideoItem(item)
     ? item.coverUrl
     : item.coverUrl || item.thumbnail || '';
@@ -87,8 +91,12 @@ export const VideoCard: React.FC<VideoCardProps> = ({
             <Ionicons name="play" size={12} color="#FFFFFF" />
             <Text style={styles.profileViewsText}>{viewsText}</Text>
           </View>
-          {showHeartIcon && (
-            <Ionicons name="heart-outline" size={14} color="#FFFFFF" />
+          {(showHeartIcon || isLiked) && (
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={14}
+              color={isLiked ? "#FF2442" : "#FFFFFF"}
+            />
           )}
         </View>
       </TouchableOpacity>

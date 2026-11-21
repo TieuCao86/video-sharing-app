@@ -433,16 +433,34 @@ export async function toggleLikeVideo(
 
   const { data: video, error: videoError } = await supabase
     .from("videos")
-    .select("creator_id")
+    .select("creator_id, likes_count")
     .eq("id", videoId)
     .maybeSingle();
 
   if (videoError) throw videoError;
 
-  if (liked && video?.creator_id) {
+  const delta = liked ? 1 : -1;
+  const newVideoLikes = Math.max((video?.likes_count || 0) + delta, 0);
+  void supabase.from("videos").update({ likes_count: newVideoLikes }).eq("id", videoId);
+
+  if (video?.creator_id) {
     const creatorDbId =
       (await resolveDbUserId(video.creator_id)) ?? video.creator_id;
-    if (creatorDbId && creatorDbId !== dbUserId) {
+
+    if (creatorDbId) {
+      const { data: creatorUser } = await supabase
+        .from("users")
+        .select("likes_count")
+        .eq("id", creatorDbId)
+        .maybeSingle();
+
+      if (creatorUser) {
+        const newUserLikes = Math.max((creatorUser.likes_count || 0) + delta, 0);
+        void supabase.from("users").update({ likes_count: newUserLikes }).eq("id", creatorDbId);
+      }
+    }
+
+    if (liked && creatorDbId && creatorDbId !== dbUserId) {
       void createLikeNotification(dbUserId, creatorDbId, videoId);
     }
   }
@@ -455,6 +473,7 @@ export async function toggleLikeVideo(
  */
 export async function getUserVideos(
   creatorId: string,
+  currentUserId?: string,
 ): Promise<VideoDetailItem[]> {
   // Guard: creatorId phải là UUID hợp lệ
   if (!isUUID(creatorId)) return [];
@@ -478,7 +497,21 @@ export async function getUserVideos(
     throw error;
   }
 
-  return (data || []).map((v: any) => mapVideoItem(v));
+  const videos = data || [];
+  let likedSet = new Set<string>();
+  if (currentUserId && videos.length > 0) {
+    const videoIds = videos.map((v: any) => v.id);
+    const { data: likesData } = await supabase
+      .from("likes")
+      .select("video_id")
+      .eq("user_id", currentUserId)
+      .in("video_id", videoIds);
+    if (likesData) {
+      likedSet = new Set(likesData.map((l: any) => l.video_id));
+    }
+  }
+
+  return videos.map((v: any) => mapVideoItem(v, likedSet.has(v.id)));
 }
 
 /**

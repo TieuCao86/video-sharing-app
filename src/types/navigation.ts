@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { VideoDetailItem } from "../services";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -23,6 +24,7 @@ export type RootStackParamList = {
   };
   ReelDetail: {
     videoId: string;
+    videos?: VideoDetailItem[];
   };
   AddFilter: {
     videoUri: string;

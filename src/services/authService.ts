@@ -48,6 +48,78 @@ export async function checkEmailExists(email: string): Promise<boolean> {
 }
 
 /**
+ * Đồng bộ Display Name và thông tin tài khoản vào bảng users
+ * Xử lý đúng cấu trúc DB: auth_id = Supabase Auth UID, id = users.id (UUID)
+ */
+export async function syncUserProfileToDb(
+  authUid: string,
+  email: string,
+  displayName: string
+): Promise<void> {
+  const trimmedEmail = email.trim();
+  const trimmedName = displayName.trim();
+  if (!trimmedEmail || !trimmedName) return;
+
+  try {
+    // 1. Tìm bản ghi theo auth_id hoặc email
+    const { data: byAuthId } = await supabase
+      .from('users')
+      .select('id, auth_id, email, display_name')
+      .eq('auth_id', authUid)
+      .maybeSingle();
+
+    let targetUser = byAuthId;
+    if (!targetUser) {
+      const { data: byEmail } = await supabase
+        .from('users')
+        .select('id, auth_id, email, display_name')
+        .ilike('email', trimmedEmail)
+        .maybeSingle();
+      targetUser = byEmail;
+    }
+
+    if (targetUser) {
+      // Đã có bản ghi (do trigger DB tạo tự động hoặc trước đó) -> Cập nhật display_name chuẩn người dùng nhập
+      await supabase
+        .from('users')
+        .update({
+          display_name: trimmedName,
+          auth_id: authUid,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', targetUser.id);
+    } else {
+      // Chưa có bản ghi -> Insert mới với auth_id
+      await supabase.from('users').insert({
+        auth_id: authUid,
+        email: trimmedEmail,
+        display_name: trimmedName,
+        avatar_url: DEFAULT_AVATAR_URL,
+        following_count: 0,
+        followers_count: 0,
+        likes_count: 0,
+        videos_count: 0,
+      });
+    }
+
+    // Cập nhật auth metadata để Supabase session luôn giữ name đúng
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          name: trimmedName,
+          display_name: trimmedName,
+          full_name: trimmedName,
+        },
+      });
+    } catch {
+      // Không chặn luồng nếu cập nhật metadata thất bại
+    }
+  } catch (err) {
+    console.error('[syncUserProfileToDb] Error syncing user profile:', err);
+  }
+}
+
+/**
  * Đăng nhập bằng Email và Password (UC02 - S12)
  */
 export async function loginWithEmail(email: string, password: string): Promise<AuthResponse> {
@@ -66,24 +138,56 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       return { success: false, message: error?.message || 'Email hoặc mật khẩu không chính xác!' };
     }
 
-    // Lấy thông tin user từ bảng users — thử cả id = auth UID lẫn auth_id = auth UID
+    // Lấy thông tin user từ bảng users — thử cả id = auth UID lẫn auth_id = auth UID lẫn email
     const authUid = data.user.id;
     let profile: any = null;
 
-    // Trường hợp 1: users.id = auth UID (upsert khi signUp dùng id: data.user.id)
-    const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
-    if (byId.data) {
-      profile = byId.data;
+    // Ưu tiên 1: users.auth_id = auth UID
+    const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
+    if (byAuthId.data) {
+      profile = byAuthId.data;
     } else {
-      // Trường hợp 2: users.auth_id = auth UID
-      const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
-      if (byAuthId.data) profile = byAuthId.data;
+      // Ưu tiên 2: users.email = email
+      const byEmail = await supabase.from('users').select('*').ilike('email', trimmedEmail).maybeSingle();
+      if (byEmail.data) {
+        profile = byEmail.data;
+        if (!profile.auth_id) {
+          void supabase.from('users').update({ auth_id: authUid }).eq('id', profile.id);
+        }
+      } else {
+        // Ưu tiên 3: users.id = auth UID
+        const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
+        if (byId.data) profile = byId.data;
+      }
+    }
+
+    // Lấy display name do người dùng nhập từ metadata (nếu database đang giữ tên tự sinh)
+    const metaDisplayName =
+      data.user.user_metadata?.display_name ||
+      data.user.user_metadata?.name ||
+      data.user.user_metadata?.full_name;
+
+    const emailPrefix = trimmedEmail.split('@')[0];
+    let resolvedDisplayName = profile?.display_name;
+
+    // Nếu profile chưa có tên hoặc tên đang là email prefix / User / Anonymous
+    if (
+      metaDisplayName &&
+      (!resolvedDisplayName ||
+        resolvedDisplayName.toLowerCase() === emailPrefix.toLowerCase() ||
+        resolvedDisplayName === 'User' ||
+        resolvedDisplayName === 'Anonymous')
+    ) {
+      resolvedDisplayName = metaDisplayName;
+      if (profile?.id) {
+        void supabase.from('users').update({ display_name: metaDisplayName }).eq('id', profile.id);
+      }
     }
 
     const loggedInUser: UserProfile = {
-      // id luôn là users.id (db PK) — nếu schema dùng auth UID làm PK thì profile.id = auth UID
+      // id luôn là users.id (db PK)
       id: profile?.id || authUid,
-      name: profile?.display_name || data.user.user_metadata?.name || 'User',
+      name: resolvedDisplayName || profile?.display_name || metaDisplayName || 'User',
       avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
       bio: profile?.bio || '',
       following: profile?.following_count || 0,
@@ -138,6 +242,8 @@ export async function signUpWithEmail(
       options: {
         data: {
           name: trimmedName,
+          display_name: trimmedName,
+          full_name: trimmedName,
         },
       },
     });
@@ -165,17 +271,8 @@ export async function signUpWithEmail(
     }
 
     if (data.user) {
-      // Lưu thông tin người dùng vào bảng users với avatar mặc định
-      await supabase.from('users').upsert({
-        id: data.user.id,
-        email: trimmedEmail,
-        display_name: trimmedName,
-        avatar_url: DEFAULT_AVATAR_URL,
-        following_count: 0,
-        followers_count: 0,
-        likes_count: 0,
-        videos_count: 0,
-      });
+      // Đồng bộ thông tin display name do người dùng nhập vào bảng users
+      await syncUserProfileToDb(data.user.id, trimmedEmail, trimmedName);
 
       // Trả về success: true để chuyển sang màn hình OTP
       return {
@@ -233,17 +330,17 @@ export async function verifyOtpCode(
       };
     }
 
-    // Cập nhật thông tin vào bảng users (nếu chưa có)
-    await supabase.from('users').upsert({
-      id: data.user.id,
-      email: trimmedEmail,
-      display_name: displayName || data.user.user_metadata?.name || 'User',
-      avatar_url: DEFAULT_AVATAR_URL,
-      following_count: 0,
-      followers_count: 0,
-      likes_count: 0,
-      videos_count: 0
-    });
+    // Cập nhật thông tin display name người dùng nhập vào bảng users
+    const effectiveDisplayName =
+      displayName?.trim() ||
+      data.user.user_metadata?.display_name ||
+      data.user.user_metadata?.name ||
+      data.user.user_metadata?.full_name ||
+      '';
+
+    if (effectiveDisplayName) {
+      await syncUserProfileToDb(data.user.id, trimmedEmail, effectiveDisplayName);
+    }
 
     // Đăng xuất phiên tạm để bắt người dùng đăng nhập tại màn hình Login
     await supabase.auth.signOut();
@@ -309,19 +406,49 @@ export async function checkSession(): Promise<UserProfile | null> {
       const authUid = data.session.user.id;
       let profile: any = null;
 
-      // Thử theo users.id = auth UID trước (schema upsert với id = data.user.id)
-      const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
-      if (byId.data) {
-        profile = byId.data;
+      // Thử theo users.auth_id = auth UID trước
+      const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
+      if (byAuthId.data) {
+        profile = byAuthId.data;
       } else {
-        // Fallback: users.auth_id = auth UID
-        const byAuthId = await supabase.from('users').select('*').eq('auth_id', authUid).maybeSingle();
-        if (byAuthId.data) profile = byAuthId.data;
+        const byEmail = data.session.user.email
+          ? await supabase.from('users').select('*').ilike('email', data.session.user.email).maybeSingle()
+          : null;
+        if (byEmail?.data) {
+          profile = byEmail.data;
+          if (!profile.auth_id) {
+            void supabase.from('users').update({ auth_id: authUid }).eq('id', profile.id);
+          }
+        } else {
+          const byId = await supabase.from('users').select('*').eq('id', authUid).maybeSingle();
+          if (byId?.data) profile = byId.data;
+        }
+      }
+
+      const metaDisplayName =
+        data.session.user.user_metadata?.display_name ||
+        data.session.user.user_metadata?.name ||
+        data.session.user.user_metadata?.full_name;
+
+      const emailPrefix = (data.session.user.email || '').split('@')[0];
+      let resolvedDisplayName = profile?.display_name;
+
+      if (
+        metaDisplayName &&
+        (!resolvedDisplayName ||
+          resolvedDisplayName.toLowerCase() === emailPrefix.toLowerCase() ||
+          resolvedDisplayName === 'User' ||
+          resolvedDisplayName === 'Anonymous')
+      ) {
+        resolvedDisplayName = metaDisplayName;
+        if (profile?.id) {
+          void supabase.from('users').update({ display_name: metaDisplayName }).eq('id', profile.id);
+        }
       }
 
       const userProfile: UserProfile = {
         id: profile?.id || authUid,
-        name: profile?.display_name || data.session.user.user_metadata?.name || 'User',
+        name: resolvedDisplayName || profile?.display_name || metaDisplayName || 'User',
         avatar: profile?.avatar_url || DEFAULT_AVATAR_URL,
         bio: profile?.bio || '',
         following: profile?.following_count || 0,
