@@ -21,12 +21,14 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoItem } from "../../components/VideoItem";
 import { authStore, useAuthStore } from "../../store/useAuthStore";
+import { useDraftsStore } from "../../store/useDraftsStore";
 import { LoginRequiredModal } from "../../components/auth/LoginRequiredModal";
 import { RootStackParamList } from "../../types/navigation";
 
 // Services kết nối Supabase
 import {
   getTrendingVideos,
+  getVideoById,
   incrementVideoView,
   toggleLikeVideo,
   getCommentsByVideoId,
@@ -89,18 +91,27 @@ export const ReelDetailScreen: React.FC = () => {
   const { checkAuth, user, isLoggedIn } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
-  
+
   const initialVideoId = route.params?.videoId;
+  const initialVideos = route.params?.videos;
+  const initialIndex =
+    initialVideos && initialVideoId
+      ? Math.max(
+        0,
+        initialVideos.findIndex((v) => v.id === initialVideoId)
+      )
+      : 0;
+
   // Lấy db id & auth id của user đang đăng nhập (chỉ khi đã đăng nhập)
   const currentDbUserId = isLoggedIn && user?.id ? user.id : null;
   const currentAuthId = isLoggedIn && user?.auth_id ? user.auth_id : null;
 
-  const [videos, setVideos] = useState<VideoDetailItem[]>([]);
+  const [videos, setVideos] = useState<VideoDetailItem[]>(initialVideos || []);
   const [followingCreatorIds, setFollowingCreatorIds] = useState<Set<string>>(new Set());
   const [likingVideoIds, setLikingVideoIds] = useState<Set<string>>(new Set());
   const likingVideoIdsRef = useRef(new Set<string>());
-  const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(!initialVideos || initialVideos.length === 0);
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   // Comments state
   const [isCommentVisible, setIsCommentVisible] = useState(false);
@@ -116,29 +127,64 @@ export const ReelDetailScreen: React.FC = () => {
   const [ownerMenuVideoId, setOwnerMenuVideoId] = useState<string | null>(null);
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
 
-  // Fetch danh sách video từ Supabase
+  // Fetch danh sách video từ Supabase hoặc dùng danh sách truyền vào
   useEffect(() => {
+    if (initialVideos && initialVideos.length > 0) {
+      setVideos(initialVideos);
+      const foundIdx = initialVideoId
+        ? initialVideos.findIndex((v) => v.id === initialVideoId)
+        : 0;
+      setCurrentIndex(foundIdx !== -1 ? foundIdx : 0);
+      setLoading(false);
+      return;
+    }
+
     async function loadVideos() {
       try {
+        setLoading(true);
+        let targetVideo: VideoDetailItem | null = null;
+
+        // Nếu có initialVideoId, ưu tiên tìm / tải video cụ thể đó trước
+        if (initialVideoId) {
+          try {
+            targetVideo = await getVideoById(
+              initialVideoId,
+              isLoggedIn ? currentDbUserId ?? undefined : undefined
+            );
+          } catch (e) {
+            console.error("Error fetching video by id:", e);
+          }
+
+        }
+
         const fetchedVideos = await getTrendingVideos(
           20,
           isLoggedIn ? currentDbUserId ?? undefined : undefined
         );
-        setVideos(fetchedVideos);
 
-        // Tìm vị trí của video được nhấn từ danh sách
-        if (initialVideoId && fetchedVideos.length > 0) {
+        let finalVideos: VideoDetailItem[] = [];
+        if (targetVideo) {
+          finalVideos = [
+            targetVideo,
+            ...fetchedVideos.filter((v) => v.id !== targetVideo!.id),
+          ];
+        } else if (initialVideoId && fetchedVideos.length > 0) {
           const foundIdx = fetchedVideos.findIndex((v) => v.id === initialVideoId);
           if (foundIdx !== -1) {
-            setCurrentIndex(foundIdx);
-            setTimeout(() => {
-              flatListRef.current?.scrollToIndex({
-                index: foundIdx,
-                animated: false,
-              });
-            }, 100);
+            const foundVideo = fetchedVideos[foundIdx];
+            finalVideos = [
+              foundVideo,
+              ...fetchedVideos.filter((_, idx) => idx !== foundIdx),
+            ];
+          } else {
+            finalVideos = fetchedVideos;
           }
+        } else {
+          finalVideos = fetchedVideos;
         }
+
+        setVideos(finalVideos);
+        setCurrentIndex(0);
       } catch (err) {
         console.error("Error loading videos in ReelDetail:", err);
       } finally {
@@ -146,7 +192,7 @@ export const ReelDetailScreen: React.FC = () => {
       }
     }
     loadVideos();
-  }, [initialVideoId, currentDbUserId, isLoggedIn]);
+  }, [initialVideoId, initialVideos, currentDbUserId, isLoggedIn]);
 
   const currentVideo = videos[currentIndex];
 
@@ -432,17 +478,26 @@ export const ReelDetailScreen: React.FC = () => {
           offset: screenHeight * index,
           index,
         })}
+        initialScrollIndex={initialIndex > 0 && initialIndex < videos.length ? initialIndex : undefined}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: info.index,
+              animated: false,
+            });
+          }, 50);
+        }}
         renderItem={({ item, index }) => (
           <VideoItem
             video={{
               id: item.id,
               title: item.title,
               url: item.videoUrl,
-              creatorId: item.creator.id,
-              creator: item.creator.name,
-              creatorAvatar: item.creator.avatar,
-              canFollow: !!item.creator.id && item.creator.id !== currentDbUserId,
-              isFollowing: !!item.creator.isFollowing,
+              creatorId: item.creator?.id || '',
+              creator: item.creator?.name || 'User',
+              creatorAvatar: item.creator?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80',
+              canFollow: !!item.creator?.id && item.creator?.id !== currentDbUserId,
+              isFollowing: !!item.creator?.isFollowing,
               caption: item.caption,
               audio: item.audioTrack?.title || 'Original Sound',
             }}
@@ -467,9 +522,9 @@ export const ReelDetailScreen: React.FC = () => {
             }}
             onMorePress={
               isLoggedIn &&
-              Boolean(item.creator.id) &&
-              (item.creator.id === currentDbUserId ||
-                (Boolean(currentAuthId) && item.creator.id === currentAuthId))
+                Boolean(item.creator.id) &&
+                (item.creator.id === currentDbUserId ||
+                  (Boolean(currentAuthId) && item.creator.id === currentAuthId))
                 ? () => handleMorePress(item.id)
                 : undefined
             }
@@ -731,7 +786,7 @@ const styles = StyleSheet.create({
   },
   // Delete loading overlay
   deleteOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",

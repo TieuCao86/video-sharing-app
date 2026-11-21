@@ -124,7 +124,7 @@ class Query implements PromiseLike<any> {
         if (uk && rows.some((r) => uk.every((k) => r[k] === it[k]))) {
           return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
         }
-        const row = { id: it.id ?? (this.t === 'videos' || this.t === 'users' ? uuid() : nextId(this.t)), created_at: now(), ...it };
+        const row: any = { id: it.id ?? (this.t === 'videos' || this.t === 'users' ? uuid() : nextId(this.t)), created_at: now(), ...it };
         // Giá trị DEFAULT như schema Postgres
         if (this.t === 'comments') row.likes_count ??= 0;
         if (this.t === 'videos') { row.views_count ??= 0; row.likes_count ??= 0; row.comments_count ??= 0; }

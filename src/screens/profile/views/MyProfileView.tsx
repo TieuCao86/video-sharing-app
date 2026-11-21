@@ -27,6 +27,7 @@ import {
   getUserVideos,
   getLikedVideos,
   getFollowCounts,
+  getUserTotalLikesReceived,
   VideoDetailItem,
 } from '../../../services';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,18 +68,23 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
 
     try {
       const profileKey = authUser.auth_id || authUser.id;
-      const [profileData, userVids, userLikedVids, followCounts] = await Promise.all([
+      const [profileData, userVids, userLikedVids, followCounts, totalLikesReceived] = await Promise.all([
         getProfileById(authUser.id),
-        getUserVideos(authUser.id),
+        getUserVideos(authUser.id, authUser.id),
         getLikedVideos(authUser.id),
         getFollowCounts(profileKey),
+        getUserTotalLikesReceived(authUser.id),
       ]);
 
       if (profileData || followCounts) {
+        // Lấy tổng lượt like nhận được trên tất cả video của tôi
+        const vidsLikesSum = userVids.reduce((sum, v) => sum + (v.likesCount || 0), 0);
+        const likesReceived = Math.max(totalLikesReceived, vidsLikesSum, profileData?.likes ?? 0);
+
         const stats = {
           following: followCounts?.following ?? profileData?.following ?? 0,
           followers: followCounts?.followers ?? profileData?.followers ?? 0,
-          likes: profileData?.likes ?? 0,
+          likes: likesReceived,
         };
 
         setProfileStats(stats);
@@ -111,17 +117,19 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     statsRefreshInFlight.current = true;
     try {
       const profileKey = authUser.auth_id || authUser.id;
-      const [profileData, followCounts] = await Promise.all([
+      const [profileData, followCounts, totalLikesReceived] = await Promise.all([
         getProfileById(authUser.id),
         getFollowCounts(profileKey),
+        getUserTotalLikesReceived(authUser.id),
       ]);
 
       if (!profileData && !followCounts) return;
 
+      const likesReceived = Math.max(totalLikesReceived, profileData?.likes ?? 0);
       const stats = {
         following: followCounts?.following ?? profileData?.following ?? 0,
         followers: followCounts?.followers ?? profileData?.followers ?? 0,
-        likes: profileData?.likes ?? 0,
+        likes: likesReceived,
       };
 
       setProfileStats(stats);
@@ -164,33 +172,66 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
     fetchProfileAndVideos();
   };
 
+  const likedIdSet = useMemo(() => new Set(likedVideos.map((lv) => lv.id)), [likedVideos]);
+
   // Ghép video vừa publish từ store drafts (nếu có) vào video của user
-  const displayedMyVideos = useMemo(() => {
-    const publishedDraftItems = publishedVideos.map((pv) => ({
+  const allMyVideoDetails = useMemo(() => {
+    const draftItems: VideoDetailItem[] = publishedVideos.map((pv) => ({
       id: pv.id,
-      thumbnail: pv.thumbnail,
+      title: pv.title,
+      videoUrl: pv.videoUrl,
+      coverUrl: pv.thumbnail,
       views: pv.views || '0 views',
+      viewsCount: 0,
+      likes: '0',
+      likesCount: 0,
+      commentsCount: 0,
+      sharesCount: 0,
+      createdAt: pv.publishedAt || new Date().toISOString(),
+      visibility: 'PUBLIC',
+      isLiked: likedIdSet.has(pv.id),
+      caption: pv.title,
+      creator: {
+        id: authUser?.id || '',
+        name: authUser?.name || 'You',
+        avatar: authUser?.avatar || '',
+        isFollowing: false,
+      },
     }));
 
-    const remoteItems = myVideos.map((v) => ({
+    return [
+      ...draftItems,
+      ...myVideos.map((v) => ({
+        ...v,
+        isLiked: v.isLiked || likedIdSet.has(v.id),
+      })),
+    ];
+  }, [publishedVideos, myVideos, likedIdSet, authUser]);
+
+  const displayedMyVideos = useMemo(() => {
+    return allMyVideoDetails.map((v) => ({
       id: v.id,
       thumbnail: v.coverUrl,
       views: v.views,
+      isLiked: v.isLiked,
     }));
-
-    return [...publishedDraftItems, ...remoteItems];
-  }, [publishedVideos, myVideos]);
+  }, [allMyVideoDetails]);
 
   const displayedLikedVideos = useMemo(() => {
     return likedVideos.map((v) => ({
       id: v.id,
       thumbnail: v.coverUrl,
       views: v.views,
+      isLiked: true,
     }));
   }, [likedVideos]);
 
   const handleVideoPress = (video: { id: string }) => {
-    navigation.navigate('ReelDetail', { videoId: video.id });
+    const list = activeTab === 'my-videos' ? allMyVideoDetails : likedVideos;
+    navigation.navigate('ReelDetail', {
+      videoId: video.id,
+      videos: list,
+    });
   };
 
   const handleEditProfile = () => {
@@ -291,7 +332,7 @@ export const MyProfileView: React.FC<MyProfileViewProps> = ({
           ) : (
             <VideoThumbnailGrid
               videos={currentList}
-              showHeartIcon={activeTab === 'liked'}
+              showHeartIcon={true}
               onVideoPress={(item) => handleVideoPress(item)}
             />
           )}

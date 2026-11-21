@@ -44,6 +44,42 @@ export async function resolveDbUserId(authId?: string | null): Promise<string | 
 }
 
 /**
+ * Tính tổng số lượt like mà một user nhận được trên tất cả video họ đã đăng (S09 / Profile Stats)
+ */
+export async function getUserTotalLikesReceived(userId: string): Promise<number> {
+  if (!isUUID(userId)) return 0;
+  const dbUserId = (await resolveDbUserId(userId)) ?? userId;
+
+  try {
+    // 1. Lấy tất cả video hợp lệ do user này tạo
+    const { data: userVideos, error: videosError } = await supabase
+      .from('videos')
+      .select('id, likes_count')
+      .eq('creator_id', dbUserId)
+      .neq('visibility', 'DELETED');
+
+    if (videosError || !userVideos || userVideos.length === 0) {
+      return 0;
+    }
+
+    const videoIds = userVideos.map((v) => v.id);
+    const sumLikesCount = userVideos.reduce((acc, v) => acc + (v.likes_count || 0), 0);
+
+    // 2. Đếm số lượt like thực tế từ bảng likes cho các video này
+    const { count, error: likesError } = await supabase
+      .from('likes')
+      .select('*', { count: 'exact', head: true })
+      .in('video_id', videoIds);
+
+    const actualLikesCount = likesError ? 0 : (count ?? 0);
+    return Math.max(actualLikesCount, sumLikesCount);
+  } catch (err) {
+    console.error('Error calculating user total likes received:', err);
+    return 0;
+  }
+}
+
+/**
  * Lấy hồ sơ tài khoản theo userId (kèm kiểm tra xem người dùng hiện tại có đang follow hay không)
  * @param userId        - users.id (db id, UUID) của user cần xem
  * @param currentAuthId - auth_id (Supabase Auth UID, UUID) của người đang đăng nhập
@@ -72,15 +108,19 @@ export async function getProfileById(userId: string, currentAuthId?: string): Pr
     return null;
   }
 
-  let isFollowing = false;
-  if (currentUserId && currentUserId !== userId) {
-    const { count } = await supabase
-      .from('follows')
-      .select('*', { count: 'exact', head: true })
-      .eq('follower_id', currentUserId)
-      .eq('following_id', userId);
-    isFollowing = !!count && count > 0;
-  }
+  const [followCheck, totalLikesReceived] = await Promise.all([
+    currentUserId && currentUserId !== userId
+      ? supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', currentUserId)
+          .eq('following_id', userId)
+      : Promise.resolve({ count: 0 }),
+    getUserTotalLikesReceived(userId),
+  ]);
+
+  const isFollowing = !!followCheck.count && followCheck.count > 0;
+  const totalLikes = Math.max(data.likes_count || 0, totalLikesReceived);
 
   return {
     id: data.id,
@@ -89,7 +129,7 @@ export async function getProfileById(userId: string, currentAuthId?: string): Pr
     bio: data.bio || '',
     following: data.following_count || 0,
     followers: data.followers_count || 0,
-    likes: data.likes_count || 0,
+    likes: totalLikes,
     videosCount: data.videos_count || 0,
     isFollowing,
   };

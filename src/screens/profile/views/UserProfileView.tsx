@@ -175,11 +175,15 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
       id: v.id,
       thumbnail: v.coverUrl,
       views: v.views,
+      isLiked: activeTab === 'liked' ? true : v.isLiked,
     }));
   }, [activeTab, videos, likedVideos]);
 
   const handleVideoPress = (item: { id: string }) => {
-    navigation.navigate('ReelDetail', { videoId: item.id });
+    navigation.navigate('ReelDetail', {
+      videoId: item.id,
+      videos: activeTab === 'videos' ? videos : likedVideos,
+    });
   };
 
   const displayName = profile?.name || initialUser.name;
@@ -284,7 +288,7 @@ export const UserProfileView: React.FC<UserProfileViewProps> = ({
           ) : (
             <VideoThumbnailGrid
               videos={displayedVideos}
-              showHeartIcon={activeTab === 'liked'}
+              showHeartIcon={true}
               onVideoPress={(item) => handleVideoPress(item)}
             />
           )}

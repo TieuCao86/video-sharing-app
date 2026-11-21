@@ -2,22 +2,15 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { VideoCard } from '../cards/VideoCard';
-import { MOCK_VIDEOS_ARRAY } from '../../screens/reel/ReelDetailScreen';
 
 interface VideoThumbnailGridProps {
-  videos: { id: string; thumbnail: string; views?: string }[];
+  videos: { id: string; thumbnail: string; views?: string; isLiked?: boolean }[];
   showHeartIcon?: boolean;
   onVideoPress?: (
-    video: { id: string; thumbnail: string; views?: string },
+    video: { id: string; thumbnail: string; views?: string; isLiked?: boolean },
     index: number
   ) => void;
 }
-
-const getRandomVideoId = (): string => {
-  if (MOCK_VIDEOS_ARRAY.length === 0) return '1';
-  const index = Math.floor(Math.random() * MOCK_VIDEOS_ARRAY.length);
-  return MOCK_VIDEOS_ARRAY[index].id;
-};
 
 export const VideoThumbnailGrid: React.FC<VideoThumbnailGridProps> = ({
   videos,
@@ -33,8 +26,7 @@ export const VideoThumbnailGrid: React.FC<VideoThumbnailGridProps> = ({
     if (onVideoPress) {
       onVideoPress(item, index);
     } else {
-      const videoId = getRandomVideoId();
-      navigation.navigate('ReelDetail', { videoId });
+      navigation.navigate('ReelDetail', { videoId: item.id });
     }
   };
 
